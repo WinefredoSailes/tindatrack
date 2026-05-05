@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TindaTrack{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Get saved theme or default to 'dark-blue'
+        const savedTheme = localStorage.getItem('tindatrack-theme') || 'dark-blue';
+        
+        // Define all themes
+        const themes = {
+            // Dark Themes
+            'dark-blue': {
+                '--color-primary': '#1E3A8A',
+                '--color-primary-light': '#3B82F6',
+                '--color-bg-main': '#0F172A',
+                '--color-bg-card': '#1E293B',
+                '--color-bg-hover': '#334155',
+                '--color-text-primary': '#F8FAFC',
+                '--color-text-secondary': '#94A3B8',
+                '--color-text-disabled': '#64748B',
+                '--color-border': '#334155',
+                '--color-success': '#22C55E',
+                '--color-warning': '#F59E0B',
+                '--color-danger': '#EF4444',
+            },
+            'dark-purple': {
+                '--color-primary': '#7C3AED',
+                '--color-primary-light': '#A78BFA',
+                '--color-bg-main': '#0F0F1A',
+                '--color-bg-card': '#1A1A2E',
+                '--color-bg-hover': '#2D2D4A',
+                '--color-text-primary': '#F5F5FF',
+                '--color-text-secondary': '#9CA3AF',
+                '--color-text-disabled': '#6B7280',
+                '--color-border': '#3D3D5C',
+                '--color-success': '#34D399',
+                '--color-warning': '#FBBF24',
+                '--color-danger': '#F87171',
+            },
+            'dark-red': {
+                '--color-primary': '#DC2626',
+                '--color-primary-light': '#EF4444',
+                '--color-bg-main': '#1A0A0A',
+                '--color-bg-card': '#2D1B1B',
+                '--color-bg-hover': '#4A2C2C',
+                '--color-text-primary': '#FFF5F5',
+                '--color-text-secondary': '#D1D5DB',
+                '--color-text-disabled': '#9CA3AF',
+                '--color-border': '#5C2E2E',
+                '--color-success': '#4ADE80',
+                '--color-warning': '#FBBF24',
+                '--color-danger': '#FCA5A5',
+            },
+            'dark-green': {
+                '--color-primary': '#059669',
+                '--color-primary-light': '#10B981',
+                '--color-bg-main': '#0A1A14',
+                '--color-bg-card': '#132A22',
+                '--color-bg-hover': '#1F4035',
+                '--color-text-primary': '#ECFDF5',
+                '--color-text-secondary': '#A7F3D0',
+                '--color-text-disabled': '#6EE7B7',
+                '--color-border': '#234E43',
+                '--color-success': '#34D399',
+                '--color-warning': '#FCD34D',
+                '--color-danger': '#F87171',
+            },
+            
+            // Light Themes
+            'light-blue': {
+                '--color-primary': '#1E40AF',
+                '--color-primary-light': '#3B82F6',
+                '--color-bg-main': '#F1F5F9',
+                '--color-bg-card': '#FFFFFF',
+                '--color-bg-hover': '#E2E8F0',
+                '--color-text-primary': '#1E293B',
+                '--color-text-secondary': '#64748B',
+                '--color-text-disabled': '#94A3B8',
+                '--color-border': '#E2E8F0',
+                '--color-success': '#059669',
+                '--color-warning': '#D97706',
+                '--color-danger': '#DC2626',
+            },
+            'light-pink': {
+                '--color-primary': '#DB2777',
+                '--color-primary-light': '#EC4899',
+                '--color-bg-main': '#FDF2F8',
+                '--color-bg-card': '#FFFFFF',
+                '--color-bg-hover': '#FCE7F3',
+                '--color-text-primary': '#831843',
+                '--color-text-secondary': '#9D174D',
+                '--color-text-disabled': '#F472B6',
+                '--color-border': '#F9A8D4',
+                '--color-success': '#059669',
+                '--color-warning': '#D97706',
+                '--color-danger': '#BE185D',
+            },
+            'light-purple': {
+                '--color-primary': '#7C3AED',
+                '--color-primary-light': '#8B5CF6',
+                '--color-bg-main': '#F5F3FF',
+                '--color-bg-card': '#FFFFFF',
+                '--color-bg-hover': '#EDE9FE',
+                '--color-text-primary': '#4C1D95',
+                '--color-text-secondary': '#6B7280',
+                '--color-text-disabled': '#A78BFA',
+                '--color-border': '#C4B5FD',
+                '--color-success': '#059669',
+                '--color-warning': '#D97706',
+                '--color-danger': '#C026D3',
+            },
+            'light-green': {
+                '--color-primary': '#047857',
+                '--color-primary-light': '#059669',
+                '--color-bg-main': '#F0FDF4',
+                '--color-bg-card': '#FFFFFF',
+                '--color-bg-hover': '#DCFCE7',
+                '--color-text-primary': '#14532D',
+                '--color-text-secondary': '#166534',
+                '--color-text-disabled': '#86EFAC',
+                '--color-border': '#BBF7D0',
+                '--color-success': '#059669',
+                '--color-warning': '#D97706',
+                '--color-danger': '#BE123C',
+            },
+            'light-red': {
+                '--color-primary': '#B91C1C',
+                '--color-primary-light': '#DC2626',
+                '--color-bg-main': '#FEF2F2',
+                '--color-bg-card': '#FFFFFF',
+                '--color-bg-hover': '#FEE2E2',
+                '--color-text-primary': '#7F1D1D',
+                '--color-text-secondary': '#991B1B',
+                '--color-text-disabled': '#FCA5A5',
+                '--color-border': '#FECACA',
+                '--color-success': '#059669',
+                '--color-warning': '#D97706',
+                '--color-danger': '#EF4444',
+            },
+            'light-orange': {
+                '--color-primary': '#EA580C',
+                '--color-primary-light': '#F97316',
+                '--color-bg-main': '#FFFBF5',
+                '--color-bg-card': '#FFFFFF',
+                '--color-bg-hover': '#FFEDD5',
+                '--color-text-primary': '#7C2D12',
+                '--color-text-secondary': '#9A3412',
+                '--color-text-disabled': '#FDBA74',
+                '--color-border': '#FED7AA',
+                '--color-success': '#059669',
+                '--color-warning': '#D97706',
+                '--color-danger': '#C2410C',
+            },
+        };
+
+        // Expose themes globally for theme switching
+        window.themes = themes;
+
+        // Apply saved theme
+        const theme = themes[savedTheme] || themes['dark-blue'];
+        document.documentElement.style.setProperty('--color-primary', theme['--color-primary']);
+        document.documentElement.style.setProperty('--color-primary-light', theme['--color-primary-light']);
+        document.documentElement.style.setProperty('--color-bg-main', theme['--color-bg-main']);
+        document.documentElement.style.setProperty('--color-bg-card', theme['--color-bg-card']);
+        document.documentElement.style.setProperty('--color-bg-hover', theme['--color-bg-hover']);
+        document.documentElement.style.setProperty('--color-text-primary', theme['--color-text-primary']);
+        document.documentElement.style.setProperty('--color-text-secondary', theme['--color-text-secondary']);
+        document.documentElement.style.setProperty('--color-text-disabled', theme['--color-text-disabled']);
+        document.documentElement.style.setProperty('--color-border', theme['--color-border']);
+        document.documentElement.style.setProperty('--color-success', theme['--color-success']);
+        document.documentElement.style.setProperty('--color-warning', theme['--color-warning']);
+        document.documentElement.style.setProperty('--color-danger', theme['--color-danger']);
+
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: 'var(--color-primary)',
+                        'primary-light': 'var(--color-primary-light)',
+                        'bg-main': 'var(--color-bg-main)',
+                        'bg-card': 'var(--color-bg-card)',
+                        'bg-hover': 'var(--color-bg-hover)',
+                        'text-primary': 'var(--color-text-primary)',
+                        'text-secondary': 'var(--color-text-secondary)',
+                        'text-disabled': 'var(--color-text-disabled)',
+                        border: 'var(--color-border)',
+                        success: 'var(--color-success)',
+                        warning: 'var(--color-warning)',
+                        danger: 'var(--color-danger)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .sidebar-transition { transition: width 0.3s ease, transform 0.3s ease; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--color-bg-card); }
+        ::-webkit-scrollbar-thumb { background: var(--color-bg-hover); border-radius: 3px; }
+        
+        /* Theme colors as CSS variables */
+        :root {
+            --color-primary: #1E3A8A;
+            --color-primary-light: #3B82F6;
+            --color-bg-main: #0F172A;
+            --color-bg-card: #1E293B;
+            --color-bg-hover: #334155;
+            --color-text-primary: #F8FAFC;
+            --color-text-secondary: #94A3B8;
+            --color-text-disabled: #64748B;
+            --color-border: #334155;
+            --color-success: #22C55E;
+            --color-warning: #F59E0B;
+            --color-danger: #EF4444;
+        }
+
+        /* Form inputs - Theme aware */
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="number"],
+        input[type="date"],
+        input[type="month"],
+        input[type="time"],
+        select,
+        textarea {
+            background-color: var(--color-bg-main);
+            color: var(--color-text-primary);
+            border: 1px solid var(--color-border);
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            width: 100%;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--color-primary-light);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+        }
+        input::placeholder,
+        textarea::placeholder {
+            color: var(--color-text-disabled);
+        }
+        select {
+            cursor: pointer;
+        }
+        input[type="checkbox"] {
+            accent-color: var(--color-primary-light);
+            width: 1rem;
+            height: 1rem;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-bg-main text-text-primary min-h-screen">
+    {% if user.is_authenticated %}
+    <div class="flex min-h-screen" id="mainContainer">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-bg-main flex-shrink-0 sidebar-transition flex flex-col border-r border-border">
+            <!-- Logo & Toggle -->
+            <div class="p-4 flex items-center justify-between border-b border-border">
+                <div class="flex items-center gap-3" id="logoSection">
+                    <div id="logoText">
+                        <h1 class="text-xl font-bold text-text-primary">TindaTrack</h1>
+                        <p class="text-xs text-text-secondary">Sari-Sari Store</p>
+                    </div>
+                </div>
+                <button type="button" id="sidebarToggle" onclick="console.log('sidebar clicked'); toggleSidebar()" class="p-2 hover:bg-bg-hover rounded-lg text-text-secondary hover:text-text-primary">
+                    <svg id="sidebarIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Theme Selector -->
+            <div id="themeSection" class="px-4 py-2 border-b border-border">
+                <button type="button" onclick="console.log('theme clicked'); toggleThemeMenu()" class="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-bg-hover text-text-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                    </svg>
+                    <span class="nav-text text-sm">Theme</span>
+                </button>
+                <div id="themeMenu" class="hidden mt-2 p-2 bg-bg-card rounded-lg border border-border">
+                    <p class="text-xs text-text-secondary mb-2">Choose Theme:</p>
+                    <div class="grid grid-cols-5 gap-2">
+                        <button onclick="setTheme('dark-blue')" class="w-8 h-8 rounded-full bg-blue-900 border-2 border-blue-500 hover:scale-110" title="Dark Blue"></button>
+                        <button onclick="setTheme('dark-purple')" class="w-8 h-8 rounded-full bg-purple-900 border-2 border-transparent hover:border-purple-400" title="Dark Purple"></button>
+                        <button onclick="setTheme('dark-red')" class="w-8 h-8 rounded-full bg-red-900 border-2 border-transparent hover:border-red-400" title="Dark Red"></button>
+                        <button onclick="setTheme('dark-green')" class="w-8 h-8 rounded-full bg-green-900 border-2 border-transparent hover:border-green-400" title="Dark Green"></button>
+                        <button onclick="setTheme('light-blue')" class="w-8 h-8 rounded-full bg-blue-100 border-2 border-transparent hover:border-blue-400" title="Light Blue"></button>
+                        <button onclick="setTheme('light-pink')" class="w-8 h-8 rounded-full bg-pink-200 border-2 border-transparent hover:border-pink-400" title="Light Pink"></button>
+                        <button onclick="setTheme('light-purple')" class="w-8 h-8 rounded-full bg-purple-200 border-2 border-transparent hover:border-purple-400" title="Light Purple"></button>
+                        <button onclick="setTheme('light-green')" class="w-8 h-8 rounded-full bg-green-100 border-2 border-transparent hover:border-green-400" title="Light Green"></button>
+                        <button onclick="setTheme('light-red')" class="w-8 h-8 rounded-full bg-red-100 border-2 border-transparent hover:border-red-400" title="Light Red"></button>
+                        <button onclick="setTheme('light-orange')" class="w-8 h-8 rounded-full bg-orange-100 border-2 border-transparent hover:border-orange-400" title="Light Orange"></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="mt-2 flex-1 overflow-y-auto no-scrollbar">
+                <a href="{% url 'dashboard' %}" class="block px-4 py-2.5 mx-2 rounded-lg hover:bg-bg-hover {% if request.path == '/' %}bg-primary-light text-white{% endif %}">
+                    <span class="flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                        <span class="nav-text">Dashboard</span>
+                    </span>
+                </a>
+                <a href="{% url 'pos' %}" class="block px-4 py-2.5 mx-2 rounded-lg hover:bg-bg-hover {% if '/pos' in request.path %}bg-primary-light text-white{% endif %}">
+                    <span class="flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <span class="nav-text">POS / Sale</span>
+                    </span>
+                </a>
+                <a href="{% url 'products' %}" class="block px-4 py-2.5 mx-2 rounded-lg hover:bg-bg-hover {% if '/products' in request.path %}bg-primary-light text-white{% endif %}">
+                    <span class="flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        <span class="nav-text">Products</span>
+                    </span>
+                </a>
+                {% if user.profile.is_owner %}
+                <div class="border-t border-border my-2 mx-4"></div>
+                <a href="{% url 'categories' %}" class="block px-4 py-2.5 mx-2 rounded-lg hover:bg-bg-hover {% if '/categories' in request.path %}bg-primary-light text-white{% endif %}">
+                    <span class="flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                        <span class="nav-text">Categories</span>
+                    </span>
+                </a>
+                <a href="{% url 'purchase' %}" class="block px-4 py-2.5 mx-2 rounded-lg hover:bg-bg-hover {% if '/purchase' in request.path %}bg-primary-light text-white{% endif %}">
+                    <span class="flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        <span class="nav-text">Stock In</span>
+                    </span>
+                </a>
+                <a href="{% url 'reports' %}" class="block px-4 py-2.5 mx-2 rounded-lg hover:bg-bg-hover {% if '/reports' in request.path %}bg-primary-light text-white{% endif %}">
+                    <span class="flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <span class="nav-text">Reports</span>
+                    </span>
+                </a>
+                <a href="{% url 'users' %}" class="block px-4 py-2.5 mx-2 rounded-lg hover:bg-bg-hover {% if '/users' in request.path %}bg-primary-light text-white{% endif %}">
+                    <span class="flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <span class="nav-text">Users</span>
+                    </span>
+                </a>
+                {% endif %}
+            </nav>
+
+            <!-- User Section -->
+            <div id="userSection" class="p-4 border-t border-border">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-primary-light flex items-center justify-center text-white font-bold">
+                        {{ user.username|upper|slice:":1" }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-text-primary truncate">{{ user.username }}</p>
+                        <p class="text-xs text-text-secondary">
+                            {% if user.profile.is_owner %}Owner{% else %}Teller{% endif %}
+                        </p>
+                    </div>
+                    <button type="button" onclick="confirmLogout()" class="p-2 hover:bg-bg-hover rounded-lg text-danger" title="Logout">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Developer Credit -->
+            <div id="devCredit" class="p-4 text-center border-t border-border">
+                <p class="text-xs text-text-disabled italic">Engineered by: WSS @2026</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto">
+            {% if messages %}
+            <div class="p-4">
+                {% for message in messages %}
+                <div class="p-4 mb-2 rounded-lg {% if message.tags == 'error' %}bg-danger bg-opacity-20 text-danger border border-danger{% else %}bg-success bg-opacity-20 text-success border border-success{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        console.log('TindaTrack script loaded');
+        
+        let sidebarMinimized = false;
+        
+        function toggleSidebar() {
+            console.log('toggleSidebar called');
+            const sidebar = document.getElementById('sidebar');
+            const logoText = document.getElementById('logoText');
+            const sidebarIcon = document.getElementById('sidebarIcon');
+            if (!sidebar) { console.error('Sidebar not found'); return; }
+            
+            if (sidebarMinimized) {
+                // Expand sidebar
+                sidebar.style.width = '256px';
+                if (logoText) logoText.style.display = 'block';
+                document.querySelectorAll('.nav-text').forEach(el => el.style.display = 'inline');
+                document.getElementById('themeSection').style.display = 'block';
+                document.getElementById('userSection').style.display = 'block';
+                document.getElementById('devCredit').style.display = 'block';
+                // Arrow pointing left <<
+                sidebarIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />';
+                sidebarMinimized = false;
+            } else {
+                // Minimize sidebar
+                sidebar.style.width = '80px';
+                if (logoText) logoText.style.display = 'none';
+                document.querySelectorAll('.nav-text').forEach(el => el.style.display = 'none');
+                document.getElementById('themeSection').style.display = 'none';
+                document.getElementById('userSection').style.display = 'none';
+                document.getElementById('devCredit').style.display = 'none';
+                // Arrow pointing right >>
+                sidebarIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />';
+                sidebarMinimized = true;
+            }
+        }
+
+        function confirmLogout() {
+            if (confirm('Are you sure you want to log out?')) {
+                window.location.href = "{% url 'logout' %}";
+            }
+        }
+
+        function toggleThemeMenu() {
+            console.log('toggleThemeMenu called');
+            const menu = document.getElementById('themeMenu');
+            if (!menu) { console.error('Theme menu not found'); return; }
+            menu.classList.toggle('hidden');
+        }
+
+        // Theme definitions - use window.themes from head script
+
+        function setTheme(themeName) {
+            console.log('setTheme called:', themeName);
+            const theme = window.themes ? window.themes[themeName] : null;
+            if (!theme) { console.error('Theme not found:', themeName); return; }
+            
+            // Save to localStorage
+            localStorage.setItem('tindatrack-theme', themeName);
+            
+            // Apply CSS variables
+            Object.keys(theme).forEach(key => {
+                document.documentElement.style.setProperty(key, theme[key]);
+            });
+            
+            // Close menu
+            document.getElementById('themeMenu').classList.add('hidden');
+        }
+    </script>
+    {% else %}
+    {% block login_content %}{% endblock %}
+    {% endif %}
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

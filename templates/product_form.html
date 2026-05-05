@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - TindaTrack{% endblock %}
+
+{% block content %}
+<div class="p-8">
+    <div class="flex items-center gap-4 mb-6">
+        <a href="{% url 'products' %}" class="text-text-secondary hover:text-text-primary">
+            ← Back to Products
+        </a>
+    </div>
+
+    <div class="flex gap-6">
+        <!-- Form -->
+        <div class="bg-bg-card rounded-xl shadow-lg p-6 flex-1 border border-bg-hover">
+            <h1 class="text-xl font-bold text-text-primary mb-6">{{ title }}</h1>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1">Product Name</label>
+                        {{ form.name }}
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-secondary mb-1">SKU (Optional)</label>
+                            {{ form.sku }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-secondary mb-1">Category</label>
+                            {{ form.category }}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-secondary mb-1">Cost Price</label>
+                            {{ form.cost_price }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-secondary mb-1">Selling Price</label>
+                            {{ form.selling_price }}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-secondary mb-1">Reorder Level</label>
+                            {{ form.reorder_level }}
+                        </div>
+                        <div class="flex items-center pt-6">
+                            <label class="flex items-center gap-2">
+                                {{ form.track_expiry }}
+                                <span class="text-sm text-text-secondary">Track Expiry</span>
+                            </label>
+                        </div>
+                    </div>
+                    {% if product %}
+                    <div class="flex items-center gap-2">
+                        {{ form.is_active }}
+                        <label class="text-sm text-text-secondary">Active (Unarchive)</label>
+                    </div>
+                    {% endif %}
+                    <button type="submit" class="w-full bg-primary-light text-white py-3 rounded-lg font-medium hover:bg-primary">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Stock Batches -->
+        {% if product and stock_batches %}
+        <div class="bg-bg-card rounded-xl shadow-lg p-6 w-96 border border-bg-hover">
+            <h2 class="text-lg font-semibold text-text-primary mb-4">Stock Batches</h2>
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-text-secondary border-b border-bg-hover">
+                        <th class="pb-2">Date</th>
+                        <th class="pb-2">Qty</th>
+                        <th class="pb-2">Rem.</th>
+                        <th class="pb-2">Expiry</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for batch in stock_batches %}
+                    <tr class="border-b border-bg-hover">
+                        <td class="py-2 text-text-primary">{{ batch.purchase_date|date:"M d" }}</td>
+                        <td class="py-2 text-text-primary">{{ batch.quantity }}</td>
+                        <td class="py-2 text-text-primary">{{ batch.remaining_quantity }}</td>
+                        <td class="py-2 {% if batch.is_expired %}text-danger{% elif batch.is_near_expiry %}text-warning{% endif %}">
+                            {% if batch.expiry_date %}{{ batch.expiry_date|date:"M d, Y" }}{% else %}-{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <a href="{% url 'purchase' %}" class="block mt-4 text-center bg-success text-white py-2 rounded-lg hover:opacity-90">
+                + Add Stock
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

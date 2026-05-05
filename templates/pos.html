@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+
+{% block title %}POS / New Sale - TindaTrack{% endblock %}
+
+{% block content %}
+<div class="p-6 h-screen flex gap-6">
+    <!-- Products Section -->
+    <div class="flex-1 flex flex-col">
+        <!-- Search -->
+        <div class="mb-4">
+            <form method="GET" id="searchForm" class="flex gap-4">
+                <input type="text" name="search" value="{{ search }}" placeholder="Search products..."
+                    class="flex-1 px-4 py-3 bg-bg-card border border-bg-hover rounded-lg text-lg text-text-primary placeholder-text-disabled"
+                    id="productSearch">
+                <button type="submit" class="bg-bg-hover text-text-primary px-4 py-2 rounded-lg hover:bg-bg-card">
+                    Search
+                </button>
+                {% if search %}
+                <a href="{% url 'pos' %}" class="px-4 py-2 border border-bg-hover rounded-lg hover:bg-bg-hover text-text-secondary">
+                    Clear
+                </a>
+                {% endif %}
+            </form>
+        </div>
+
+        <!-- Product Grid -->
+        <div class="flex-1 bg-bg-card rounded-xl shadow-lg p-4 overflow-y-auto border border-bg-hover">
+            <h2 class="text-lg font-semibold text-text-primary mb-4">Products</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="productGrid">
+                {% for product in products %}
+                <button type="button" onclick="addToCart({{ product.id }}, '{{ product.name }}', {{ product.selling_price }}, {{ product.current_stock }})"
+                    class="p-4 border border-bg-hover rounded-lg hover:border-primary-light hover:bg-bg-hover transition text-left
+                    {% if product.current_stock == 0 %}opacity-50 cursor-not-allowed{% endif %}"
+                    {% if product.current_stock == 0 %}disabled{% endif %}>
+                    <p class="font-medium text-text-primary">{{ product.name }}</p>
+                    <p class="text-success font-bold">₱{{ product.selling_price }}</p>
+                    <p class="text-sm {% if product.is_low_stock %}text-danger{% else %}text-text-secondary{% endif %}">
+                        Stock: {{ product.current_stock }}
+                    </p>
+                </button>
+                {% empty %}
+                <p class="col-span-4 text-center text-text-secondary py-8">No products found</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Section -->
+    <div class="w-96 bg-bg-card rounded-xl shadow-lg flex flex-col border border-bg-hover">
+        <div class="p-4 border-b border-bg-hover">
+            <h2 class="text-lg font-semibold text-text-primary">Cart</h2>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4" id="cartItems">
+            <div id="cartEmpty" class="text-center text-text-secondary py-8">
+                No items in cart
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-bg-hover">
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-lg font-semibold text-text-primary">Total:</span>
+                <span class="text-2xl font-bold text-success" id="cartTotal">₱0.00</span>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-text-secondary mb-1">Payment Type</label>
+                <select id="paymentType" class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                    <option value="cash">Cash</option>
+                    <option value="gcash">GCash</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <button onclick="confirmSale()" id="completeSaleBtn"
+                class="w-full bg-primary-light text-text-primary py-3 rounded-lg font-medium hover:bg-primary transition disabled:bg-bg-hover disabled:cursor-not-allowed">
+                Complete Sale
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50">
+    <div class="bg-bg-card rounded-lg shadow-xl p-6 max-w-md w-full mx-4 border border-bg-hover">
+        <h3 class="text-lg font-semibold text-text-primary mb-4">Confirm Sale</h3>
+        <p id="confirmMessage" class="text-text-secondary mb-6"></p>
+        <div class="flex justify-end gap-4">
+            <button onclick="closeConfirmModal()" class="px-4 py-2 border border-bg-hover rounded-lg hover:bg-bg-hover text-text-primary">Cancel</button>
+            <button onclick="processSale()" class="px-4 py-2 bg-success text-text-primary rounded-lg hover:opacity-90">Confirm Sale</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let cart = [];
+
+    function addToCart(id, name, price, stock) {
+        if (stock === 0) return;
+
+        const existing = cart.find(item => item.product_id === id);
+        if (existing) {
+            if (existing.quantity < stock) {
+                existing.quantity++;
+            }
+        } else {
+            cart.push({ product_id: id, name: name, price: price, quantity: 1 });
+        }
+        renderCart();
+    }
+
+    function removeFromCart(id) {
+        cart = cart.filter(item => item.product_id !== id);
+        renderCart();
+    }
+
+    function updateQuantity(id, change) {
+        const item = cart.find(i => i.product_id === id);
+        if (item) {
+            item.quantity += change;
+            if (item.quantity <= 0) {
+                removeFromCart(id);
+            } else {
+                renderCart();
+            }
+        }
+    }
+
+    function renderCart() {
+        const container = document.getElementById('cartItems');
+        const totalEl = document.getElementById('cartTotal');
+        const completeBtn = document.getElementById('completeSaleBtn');
+
+        if (cart.length === 0) {
+            container.innerHTML = '<div id="cartEmpty" class="text-center text-text-secondary py-8">No items in cart</div>';
+            totalEl.textContent = '₱0.00';
+            completeBtn.disabled = true;
+            return;
+        }
+
+        let html = '';
+        let total = 0;
+
+        cart.forEach(item => {
+            const subtotal = item.price * item.quantity;
+            total += subtotal;
+            html += `
+                <div class="flex justify-between items-center py-2 border-b border-bg-hover">
+                    <div class="flex-1">
+                        <p class="font-medium text-text-primary">${item.name}</p>
+                        <p class="text-sm text-text-secondary">₱${item.price} each</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="updateQuantity(${item.product_id}, -1)" class="w-8 h-8 rounded bg-bg-hover hover:bg-primary-light text-text-primary">-</button>
+                        <span class="w-8 text-center text-text-primary">${item.quantity}</span>
+                        <button onclick="updateQuantity(${item.product_id}, 1)" class="w-8 h-8 rounded bg-bg-hover hover:bg-primary-light text-text-primary">+</button>
+                    </div>
+                    <div class="text-right ml-4">
+                        <p class="font-medium text-text-primary">₱${subtotal.toFixed(2)}</p>
+                        <button onclick="removeFromCart(${item.product_id})" class="text-danger text-sm hover:underline">Remove</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+        totalEl.textContent = '₱' + total.toFixed(2);
+        completeBtn.disabled = false;
+    }
+
+    function confirmSale() {
+        if (cart.length === 0) return;
+
+        let total = 0;
+        cart.forEach(item => {
+            total += item.price * item.quantity;
+        });
+
+        const itemList = cart.map(item => `${item.name} x${item.quantity}`).join(', ');
+        document.getElementById('confirmMessage').innerHTML = `
+            <strong class="text-text-primary">Total: ₱${total.toFixed(2)}</strong><br><br>
+            <span class="text-text-secondary">Items: ${itemList}</span><br><br>
+            Are you sure you want to complete this sale?
+        `;
+        document.getElementById('confirmModal').classList.remove('hidden');
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('confirmModal').classList.add('hidden');
+    }
+
+    function processSale() {
+        if (cart.length === 0) return;
+        closeConfirmModal();
+
+        const paymentType = document.getElementById('paymentType').value;
+
+        fetch('{% url "process_sale" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                items: cart,
+                payment_type: paymentType
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Sale completed! Total: ₱' + data.total);
+                cart = [];
+                renderCart();
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error processing sale: ' + error);
+        });
+    }
+
+    document.getElementById('productSearch').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('searchForm').submit();
+        }
+        if (e.key === 'Escape') {
+            this.blur();
+        }
+    });
+</script>
+{% endblock %}

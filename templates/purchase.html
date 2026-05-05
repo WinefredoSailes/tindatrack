@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Purchase / Stock In - TindaTrack{% endblock %}
+
+{% block content %}
+<div class="p-8">
+    <h1 class="text-2xl font-bold text-text-primary mb-6">Purchase / Stock In</h1>
+
+    <div class="flex gap-6">
+        <!-- Form -->
+        <div class="bg-bg-card rounded-xl shadow-lg p-6 w-96 border border-bg-hover">
+            <h2 class="text-lg font-semibold text-text-primary mb-4">Add Stock</h2>
+            <form method="POST" onsubmit="return confirm('Are you sure you want to add this stock?')">
+                {% csrf_token %}
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1">Product</label>
+                        {{ form.product }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1">Supplier Name</label>
+                        {{ form.supplier_name }}
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-secondary mb-1">Quantity</label>
+                            {{ form.quantity }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-secondary mb-1">Unit Cost</label>
+                            {{ form.unit_cost }}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-secondary mb-1">Purchase Date</label>
+                            {{ form.purchase_date }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-secondary mb-1">Expiry Date</label>
+                            {{ form.expiry_date }}
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-success text-white py-3 rounded-lg font-medium hover:opacity-90">
+                        Save & Add Stock
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Recent Purchases -->
+        <div class="flex-1 bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+            <h2 class="text-lg font-semibold text-text-primary mb-4">Recent Purchases</h2>
+            <table class="w-full">
+                <thead class="bg-bg-main">
+                    <tr class="text-left text-sm text-text-secondary">
+                        <th class="px-4 py-2">Date</th>
+                        <th class="px-4 py-2">Product</th>
+                        <th class="px-4 py-2">Supplier</th>
+                        <th class="px-4 py-2">Quantity</th>
+                        <th class="px-4 py-2">Cost</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-bg-hover">
+                    {% for purchase in purchases %}
+                    <tr class="hover:bg-bg-hover">
+                        <td class="px-4 py-3 text-text-primary">{{ purchase.purchase_date|date:"M d, Y" }}</td>
+                        <td class="px-4 py-3 text-text-primary">{{ purchase.product.name }}</td>
+                        <td class="px-4 py-3 text-text-secondary">{{ purchase.supplier_name|default:"-" }}</td>
+                        <td class="px-4 py-3 text-text-primary">{{ purchase.quantity }}</td>
+                        <td class="px-4 py-3 text-success">₱{{ purchase.unit_cost }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-4 py-8 text-center text-text-secondary">No recent purchases</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

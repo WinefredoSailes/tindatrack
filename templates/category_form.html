@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - TindaTrack{% endblock %}
+
+{% block content %}
+<div class="p-8 max-w-xl mx-auto">
+    <div class="flex items-center gap-4 mb-6">
+        <a href="{% url 'categories' %}" class="text-text-secondary hover:text-text-primary">
+            ← Back to Categories
+        </a>
+    </div>
+
+    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+        <h1 class="text-xl font-bold text-text-primary mb-6">{{ title }}</h1>
+        <form method="POST">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-text-secondary mb-1">Category Name</label>
+                    {{ form.name }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-text-secondary mb-1">Description</label>
+                    {{ form.description }}
+                </div>
+                <div class="flex items-center gap-2">
+                    {{ form.is_active }}
+                    <label class="text-sm text-text-secondary">Active</label>
+                </div>
+                <button type="submit" class="w-full bg-primary-light text-white py-3 rounded-lg font-medium hover:bg-primary">
+                    Save Category
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

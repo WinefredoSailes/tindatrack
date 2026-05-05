@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Categories - TindaTrack{% endblock %}
+
+{% block content %}
+<div class="p-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-text-primary">Categories</h1>
+        <a href="{% url 'add_category' %}" class="bg-primary-light text-white px-4 py-2 rounded-lg font-medium hover:bg-primary">
+            + Add Category
+        </a>
+    </div>
+
+    <div class="bg-bg-card rounded-xl shadow-lg overflow-hidden border border-bg-hover">
+        <table class="w-full">
+            <thead class="bg-bg-main">
+                <tr class="text-left text-sm text-text-secondary">
+                    <th class="px-6 py-3">Name</th>
+                    <th class="px-6 py-3">Description</th>
+                    <th class="px-6 py-3">Status</th>
+                    <th class="px-6 py-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-bg-hover">
+                {% for category in categories %}
+                <tr class="hover:bg-bg-hover">
+                    <td class="px-6 py-4 font-medium text-text-primary">{{ category.name }}</td>
+                    <td class="px-6 py-4 text-text-secondary">{{ category.description|default:"-" }}</td>
+                    <td class="px-6 py-4">
+                        {% if category.is_active %}
+                        <span class="text-success">Active</span>
+                        {% else %}
+                        <span class="text-text-secondary">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        <a href="{% url 'edit_category' category.id %}" class="text-primary-light hover:underline">Edit</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="px-6 py-8 text-center text-text-secondary">No categories found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

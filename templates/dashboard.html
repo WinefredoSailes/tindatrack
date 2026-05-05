@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - TindaTrack{% endblock %}
+
+{% block content %}
+<div class="p-8">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-text-primary">Dashboard</h1>
+            <p class="text-text-secondary">{{ today|date:"F j, Y" }}</p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+            <p class="text-sm text-text-secondary mb-1">Today's Sales</p>
+            <p class="text-2xl font-bold text-success">₱{{ total_sales|floatformat:2 }}</p>
+        </div>
+        <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+            <p class="text-sm text-text-secondary mb-1">Transactions</p>
+            <p class="text-2xl font-bold text-primary-light">{{ transaction_count }}</p>
+        </div>
+        <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+            <p class="text-sm text-text-secondary mb-1">Low Stock Items</p>
+            <p class="text-2xl font-bold text-danger">{{ low_stock_count }}</p>
+        </div>
+        <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+            <p class="text-sm text-text-secondary mb-1">Near Expiry</p>
+            <p class="text-2xl font-bold text-warning">{{ near_expiry_count }}</p>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="flex gap-4 mb-8">
+        <a href="{% url 'pos' %}" class="bg-primary-light text-white px-6 py-3 rounded-lg font-medium hover:bg-primary transition">
+            + New Sale
+        </a>
+        {% if user.profile.is_owner %}
+        <a href="{% url 'purchase' %}" class="bg-success text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition">
+            Add Stock
+        </a>
+        <a href="{% url 'products' %}" class="bg-bg-hover text-white px-6 py-3 rounded-lg font-medium hover:bg-bg-card transition">
+            View Products
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Tables -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Low Stock -->
+        <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+            <h2 class="text-lg font-semibold text-text-primary mb-4">Low Stock Items</h2>
+            {% if low_stock_products %}
+            <table class="w-full">
+                <thead>
+                    <tr class="text-left text-sm text-text-secondary border-b border-bg-hover">
+                        <th class="pb-2">Product</th>
+                        <th class="pb-2">Stock</th>
+                        <th class="pb-2">Reorder</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in low_stock_products %}
+                    <tr class="border-b border-bg-hover">
+                        <td class="py-2 text-text-primary">{{ item.name }}</td>
+                        <td class="py-2 text-danger">{{ item.current_stock }}</td>
+                        <td class="py-2 text-text-secondary">{{ item.reorder_level }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-text-secondary text-sm">No low stock items</p>
+            {% endif %}
+        </div>
+
+        <!-- Near Expiry -->
+        <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+            <h2 class="text-lg font-semibold text-text-primary mb-4">Near Expiry Items</h2>
+            {% if near_expiry_items %}
+            <table class="w-full">
+                <thead>
+                    <tr class="text-left text-sm text-text-secondary border-b border-bg-hover">
+                        <th class="pb-2">Product</th>
+                        <th class="pb-2">Expires</th>
+                        <th class="pb-2">Days Left</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in near_expiry_items %}
+                    <tr class="border-b border-bg-hover">
+                        <td class="py-2 text-text-primary">{{ item.product }}</td>
+                        <td class="py-2 text-text-secondary">{{ item.expiry_date }}</td>
+                        <td class="py-2 text-warning">{{ item.days_left }} days</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-text-secondary text-sm">No near expiry items</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

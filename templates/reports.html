@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block title %}Reports - TindaTrack{% endblock %}
+
+{% block content %}
+<div class="p-8">
+    <h1 class="text-2xl font-bold text-text-primary mb-6">Reports</h1>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6">
+        <a href="?type=daily" class="px-4 py-2 rounded-lg {% if report_type == 'daily' %}bg-primary-light text-white{% else %}bg-bg-card text-text-secondary border border-bg-hover{% endif %}">
+            Daily
+        </a>
+        <a href="?type=monthly" class="px-4 py-2 rounded-lg {% if report_type == 'monthly' %}bg-primary-light text-white{% else %}bg-bg-card text-text-secondary border border-bg-hover{% endif %}">
+            Monthly
+        </a>
+        <a href="?type=inventory" class="px-4 py-2 rounded-lg {% if report_type == 'inventory' %}bg-primary-light text-white{% else %}bg-bg-card text-text-secondary border border-bg-hover{% endif %}">
+            Inventory
+        </a>
+    </div>
+
+    <!-- Daily Report -->
+    {% if report_type == 'daily' %}
+    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-lg font-semibold text-text-primary">Daily Sales Summary</h2>
+            <form method="GET" class="flex gap-2">
+                <input type="hidden" name="type" value="daily">
+                <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}"
+                    class="px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                <button type="submit" class="bg-bg-hover text-white px-4 py-2 rounded-lg hover:bg-bg-card">Go</button>
+            </form>
+        </div>
+
+        <div class="grid grid-cols-4 gap-4 mb-6">
+            <div class="bg-bg-main rounded-lg p-4">
+                <p class="text-sm text-text-secondary">Total Sales</p>
+                <p class="text-xl font-bold text-success">₱{{ total_sales|floatformat:2 }}</p>
+            </div>
+            <div class="bg-bg-main rounded-lg p-4">
+                <p class="text-sm text-text-secondary">Total Purchases</p>
+                <p class="text-xl font-bold text-danger">₱{{ total_purchases|floatformat:2 }}</p>
+            </div>
+            <div class="bg-bg-main rounded-lg p-4">
+                <p class="text-sm text-text-secondary">Profit</p>
+                <p class="text-xl font-bold text-primary-light">₱{{ profit|floatformat:2 }}</p>
+            </div>
+            <div class="bg-bg-main rounded-lg p-4">
+                <p class="text-sm text-text-secondary">Expired Value</p>
+                <p class="text-xl font-bold text-warning">₱{{ expired_value|floatformat:2 }}</p>
+            </div>
+        </div>
+
+        <h3 class="font-semibold text-text-primary mb-4">Today's Transactions</h3>
+        <table class="w-full">
+            <thead class="bg-bg-main">
+                <tr class="text-left text-sm text-text-secondary">
+                    <th class="px-4 py-2">Time</th>
+                    <th class="px-4 py-2">Items</th>
+                    <th class="px-4 py-2">Total</th>
+                    <th class="px-4 py-2">Payment</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-bg-hover">
+                {% for sale in transactions %}
+                <tr class="hover:bg-bg-hover">
+                    <td class="px-4 py-3 text-text-primary">{{ sale.sale_date|time:"g:i A" }}</td>
+                    <td class="px-4 py-3 text-text-primary">
+                        {% for item in sale.items.all %}{{ item.product.name }} x{{ item.quantity }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                    </td>
+                    <td class="px-4 py-3 font-medium text-text-primary">₱{{ sale.total_amount }}</td>
+                    <td class="px-4 py-3 text-text-secondary">{{ sale.get_payment_type_display }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="px-4 py-8 text-center text-text-secondary">No transactions today</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Monthly Report -->
+    {% if report_type == 'monthly' %}
+    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-lg font-semibold text-text-primary">Monthly Sales Overview</h2>
+            <form method="GET" class="flex gap-2">
+                <input type="hidden" name="type" value="monthly">
+                <input type="month" name="month" value="{{ start_date|date:'Y-m' }}"
+                    class="px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                <button type="submit" class="bg-bg-hover text-white px-4 py-2 rounded-lg hover:bg-bg-card">Go</button>
+            </form>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="bg-bg-main rounded-lg p-4">
+                <p class="text-sm text-text-secondary">Total Sales</p>
+                <p class="text-xl font-bold text-success">₱{{ total_sales|floatformat:2 }}</p>
+            </div>
+            <div class="bg-bg-main rounded-lg p-4">
+                <p class="text-sm text-text-secondary">Total Purchases</p>
+                <p class="text-xl font-bold text-danger">₱{{ total_purchases|floatformat:2 }}</p>
+            </div>
+            <div class="bg-bg-main rounded-lg p-4">
+                <p class="text-sm text-text-secondary">Profit</p>
+                <p class="text-xl font-bold text-primary-light">₱{{ profit|floatformat:2 }}</p>
+            </div>
+        </div>
+
+        <h3 class="font-semibold text-text-primary mb-4">Top Products</h3>
+        <table class="w-full">
+            <thead class="bg-bg-main">
+                <tr class="text-left text-sm text-text-secondary">
+                    <th class="px-4 py-2">Product</th>
+                    <th class="px-4 py-2">Total Qty</th>
+                    <th class="px-4 py-2">Total Sales</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-bg-hover">
+                {% for product in top_products %}
+                <tr class="hover:bg-bg-hover">
+                    <td class="px-4 py-3 text-text-primary">{{ product.product__name }}</td>
+                    <td class="px-4 py-3 text-text-primary">{{ product.total_qty }}</td>
+                    <td class="px-4 py-3 font-medium text-text-primary">₱{{ product.total_sales }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="px-4 py-8 text-center text-text-secondary">No data for this month</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Inventory Report -->
+    {% if report_type == 'inventory' %}
+    <div class="grid grid-cols-2 gap-6">
+        <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+            <h2 class="text-lg font-semibold text-text-primary mb-4">Low Stock Items</h2>
+            <table class="w-full">
+                <thead class="bg-bg-main">
+                    <tr class="text-left text-sm text-text-secondary">
+                        <th class="px-4 py-2">Product</th>
+                        <th class="px-4 py-2">Stock</th>
+                        <th class="px-4 py-2">Reorder</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-bg-hover">
+                    {% for product in low_stock %}
+                    <tr class="hover:bg-bg-hover">
+                        <td class="px-4 py-3 text-text-primary">{{ product.name }}</td>
+                        <td class="px-4 py-3 text-danger">{{ product.current_stock }}</td>
+                        <td class="px-4 py-3 text-text-secondary">{{ product.reorder_level }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="px-4 py-8 text-center text-text-secondary">No low stock items</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+            <h2 class="text-lg font-semibold text-text-primary mb-4">Near Expiry Items</h2>
+            <table class="w-full">
+                <thead class="bg-bg-main">
+                    <tr class="text-left text-sm text-text-secondary">
+                        <th class="px-4 py-2">Product</th>
+                        <th class="px-4 py-2">Expiry</th>
+                        <th class="px-4 py-2">Days Left</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-bg-hover">
+                    {% for item in near_expiry %}
+                    <tr class="hover:bg-bg-hover">
+                        <td class="px-4 py-3 text-text-primary">{{ item.product }}</td>
+                        <td class="px-4 py-3 text-text-secondary">{{ item.batch.expiry_date|date:"M d, Y" }}</td>
+                        <td class="px-4 py-3 text-warning">{{ item.days_left }} days</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="px-4 py-8 text-center text-text-secondary">No near expiry items</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
