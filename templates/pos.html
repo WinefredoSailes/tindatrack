@@ -63,6 +63,20 @@
                 <span class="text-2xl font-bold text-success" id="cartTotal">₱0.00</span>
             </div>
 
+            <!-- Change Calculator -->
+            <div class="mb-4 p-3 bg-bg-main rounded-lg border border-bg-hover">
+                <div class="mb-2">
+                    <label class="block text-sm font-medium text-text-secondary mb-1">Cash Tendered</label>
+                    <input type="number" id="cashTendered" min="0" step="0.01" placeholder="Enter amount"
+                        class="w-full px-3 py-2 bg-bg-card border border-bg-hover rounded-lg text-text-primary"
+                        oninput="calculateChange()">
+                </div>
+                <div class="flex justify-between items-center pt-2 border-t border-bg-hover">
+                    <span class="text-sm font-medium text-text-secondary">Change:</span>
+                    <span id="changeAmount" class="text-xl font-bold text-primary-light">₱0.00</span>
+                </div>
+            </div>
+
             <div class="mb-4">
                 <label class="block text-sm font-medium text-text-secondary mb-1">Payment Type</label>
                 <select id="paymentType" class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
@@ -169,6 +183,22 @@
         container.innerHTML = html;
         totalEl.textContent = '₱' + total.toFixed(2);
         completeBtn.disabled = false;
+        calculateChange();
+    }
+
+    function calculateChange() {
+        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const cashGiven = parseFloat(document.getElementById('cashTendered').value) || 0;
+        const change = cashGiven - total;
+        const changeEl = document.getElementById('changeAmount');
+        
+        if (change >= 0) {
+            changeEl.textContent = '₱' + change.toFixed(2);
+            changeEl.className = 'text-xl font-bold text-success';
+        } else {
+            changeEl.textContent = '₱' + Math.abs(change).toFixed(2) + ' short';
+            changeEl.className = 'text-xl font-bold text-danger';
+        }
     }
 
     function confirmSale() {
@@ -214,6 +244,9 @@
             if (data.success) {
                 alert('Sale completed! Total: ₱' + data.total);
                 cart = [];
+                document.getElementById('cashTendered').value = '';
+                document.getElementById('changeAmount').textContent = '₱0.00';
+                document.getElementById('changeAmount').className = 'text-xl font-bold text-primary-light';
                 renderCart();
                 location.reload();
             } else {
