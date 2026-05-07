@@ -38,6 +38,11 @@ urlpatterns = [
     path('users/<int:pk>/deactivate/', views.deactivate_user, name='deactivate_user'),
     path('users/<int:pk>/activate/', views.activate_user, name='activate_user'),
 
+    # Credit / Utang
+    path('credit/', views.credit_list, name='credit_list'),
+    path('credit/<int:pk>/add-payment/', views.credit_add_payment, name='credit_add_payment'),
+    path('credit/<int:pk>/delete/', views.credit_delete, name='credit_delete'),
+
     # API
     path('api/products/', views.api_products, name='api_products'),
 ]

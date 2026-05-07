@@ -4,13 +4,14 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.db.models import Sum, Count, Q, F
+from decimal import Decimal
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from datetime import timedelta
 import json
 
-from .models import Category, Product, StockBatch, Sale, SaleItem, Purchase, UserProfile
+from .models import Category, Product, StockBatch, Sale, SaleItem, Purchase, UserProfile, CreditRecord, CreditItem, CreditPayment
 from .forms import (
     LoginForm, UserCreationForm, UserEditForm,
     CategoryForm, ProductForm, PurchaseForm, SaleForm
@@ -32,7 +33,7 @@ def teller_can_view(view_func):
     def wrapper(request, *args, **kwargs):
         if hasattr(request.user, 'profile') and request.user.profile.is_teller:
             # Tellers can only access certain views
-            allowed = ['dashboard', 'pos', 'products', 'logout', 'process_sale']
+            allowed = ['dashboard', 'pos', 'products', 'logout', 'process_sale', 'credit_list', 'credit_add_payment']
             if view_func.__name__ not in allowed:
                 messages.error(request, "You don't have permission to access this page.")
                 return redirect('dashboard')
@@ -79,6 +80,15 @@ def dashboard(request):
     total_sales = today_sales.aggregate(total=Sum('total_amount'))['total'] or 0
     transaction_count = today_sales.count()
 
+    # Today's credit payments received
+    today_credit_payments = CreditPayment.objects.filter(payment_date__date=today)
+    today_credit_received = today_credit_payments.aggregate(total=Sum('amount'))['total'] or 0
+
+    # Total outstanding credit (all unpaid/partial)
+    total_outstanding = CreditRecord.objects.filter(
+        status__in=['unpaid', 'partial']
+    ).aggregate(total=Sum('remaining_balance'))['total'] or 0
+
     # Low stock items
     low_stock_products = []
     for product in Product.objects.filter(is_active=True):
@@ -112,6 +122,8 @@ def dashboard(request):
         'near_expiry_count': len(near_expiry_items),
         'low_stock_products': low_stock_products[:5],
         'near_expiry_items': near_expiry_items[:5],
+        'total_outstanding': total_outstanding,
+        'today_credit_received': today_credit_received,
     }
     return render(request, 'dashboard.html', context)
 
@@ -282,6 +294,7 @@ def process_sale(request):
         data = json.loads(request.body)
         items = data.get('items', [])
         payment_type = data.get('payment_type', 'cash')
+        customer_name = data.get('customer_name', '').strip()
 
         if not items:
             return JsonResponse({'success': False, 'error': 'No items in cart'})
@@ -292,7 +305,70 @@ def process_sale(request):
             product = Product.objects.get(pk=item['product_id'])
             total += product.selling_price * item['quantity']
 
-        # Create sale
+        # Handle Credit / Utang
+        if payment_type == 'credit':
+            if not customer_name:
+                return JsonResponse({'success': False, 'error': 'Customer name required for credit'})
+            
+            # Check if customer already has unpaid or partial credit
+            existing_credit = CreditRecord.objects.filter(
+                customer_name__iexact=customer_name,
+                status__in=['unpaid', 'partial']
+            ).first()
+            
+            if existing_credit:
+                # Add to existing credit record
+                existing_credit.total_amount += total
+                existing_credit.remaining_balance += total
+                existing_credit.save()
+                credit = existing_credit
+                message = f'Added to existing credit for {customer_name}. Total owed: ₱{existing_credit.remaining_balance}'
+            else:
+                # Create new credit record
+                credit = CreditRecord.objects.create(
+                    customer_name=customer_name,
+                    total_amount=total,
+                    remaining_balance=total,
+                    status='unpaid',
+                    created_by=request.user
+                )
+                message = f'Credit / Utang recorded for {customer_name}!'
+            
+            # Create credit items (snapshot of products)
+            for item in items:
+                product = Product.objects.get(pk=item['product_id'])
+                quantity = item['quantity']
+                unit_price = product.selling_price
+                subtotal = unit_price * quantity
+                
+                CreditItem.objects.create(
+                    credit_record=credit,
+                    product=product,
+                    quantity=quantity,
+                    unit_price=unit_price,
+                    subtotal=subtotal
+                )
+                
+                # Deduct inventory (FIFO) - same as regular sale
+                quantity_needed = quantity
+                batches = product.stock_batches.filter(
+                    remaining_quantity__gt=0
+                ).order_by('purchase_date', 'expiry_date')
+                
+                for batch in batches:
+                    if quantity_needed <= 0:
+                        break
+                    if batch.is_expired:
+                        continue
+                    
+                    deduct = min(batch.remaining_quantity, quantity_needed)
+                    batch.remaining_quantity -= deduct
+                    batch.save()
+                    quantity_needed -= deduct
+            
+            return JsonResponse({'success': True, 'sale_id': credit.id, 'total': str(total), 'message': message})
+
+        # Regular sale (cash, gcash, other) - add to today's revenue
         sale = Sale.objects.create(
             total_amount=total,
             payment_type=payment_type,
@@ -458,7 +534,7 @@ def reports(request):
             'top_products': top_products,
         }
 
-    else:  # inventory
+    elif report_type == 'inventory':
         products = Product.objects.filter(is_active=True).select_related('category')
 
         low_stock = [p for p in products if p.is_low_stock]
@@ -482,6 +558,63 @@ def reports(request):
             'products': products,
             'low_stock': low_stock,
             'near_expiry': near_expiry,
+        }
+    
+    elif report_type == 'credit':
+        # Credit report
+        today = timezone.now().date()
+        
+        # New credit created today
+        credit_new_today = CreditRecord.objects.filter(created_at__date=today).aggregate(
+            total=Sum('total_amount')
+        )['total'] or 0
+        
+        # Payments received today
+        credit_payments_today = CreditPayment.objects.filter(payment_date__date=today).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        
+        # Total outstanding
+        credit_outstanding = CreditRecord.objects.filter(
+            status__in=['unpaid', 'partial']
+        ).aggregate(total=Sum('remaining_balance'))['total'] or 0
+        
+        # All credit records with paid amount
+        credit_records = []
+        for credit in CreditRecord.objects.all():
+            paid = credit.total_amount - credit.remaining_balance
+            credit_records.append({
+                'customer_name': credit.customer_name,
+                'created_at': credit.created_at,
+                'total_amount': credit.total_amount,
+                'remaining_balance': credit.remaining_balance,
+                'paid': paid,
+                'status': credit.status,
+                'get_status_display': credit.get_status_display,
+            })
+        
+        context = {
+            'report_type': 'credit',
+            'credit_new_today': credit_new_today,
+            'credit_payments_today': credit_payments_today,
+            'credit_outstanding': credit_outstanding,
+            'credit_records': credit_records,
+        }
+
+    elif report_type == 'velocity':
+        # Sales Velocity - all time fast/slow moving items
+        fast_moving = SaleItem.objects.values('product__name').annotate(
+            total_qty=Sum('quantity')
+        ).order_by('-total_qty')[:20]
+
+        slow_moving = SaleItem.objects.values('product__name').annotate(
+            total_qty=Sum('quantity')
+        ).order_by('total_qty')[:10]
+
+        context = {
+            'report_type': 'velocity',
+            'fast_moving': fast_moving,
+            'slow_moving': slow_moving,
         }
 
     return render(request, 'reports.html', context)
@@ -551,6 +684,112 @@ def activate_user(request, pk):
     user.save()
     messages.success(request, f'User {user.username} has been activated.')
     return redirect('users')
+
+
+# ==================== CREDIT / UTANG VIEWS ====================
+
+@login_required
+def credit_list(request):
+    filter_status = request.GET.get('status', 'all')
+    
+    # Recalculate balances if needed
+    if request.GET.get('recalculate') == '1':
+        for credit in CreditRecord.objects.all():
+            paid = credit.payments.aggregate(total=Sum('amount'))['total'] or 0
+            credit.remaining_balance = credit.total_amount - paid
+            if credit.remaining_balance <= 0:
+                credit.remaining_balance = 0
+                credit.status = 'paid'
+            elif paid > 0:
+                credit.status = 'partial'
+            else:
+                credit.status = 'unpaid'
+            credit.save()
+        messages.success(request, 'Credit balances recalculated.')
+    
+    credits = CreditRecord.objects.all()
+    
+    if filter_status == 'unpaid':
+        credits = credits.filter(status='unpaid')
+    elif filter_status == 'partial':
+        credits = credits.filter(status='partial')
+    elif filter_status == 'paid':
+        credits = credits.filter(status='paid')
+    
+    # Calculate total outstanding
+    total_outstanding = CreditRecord.objects.filter(
+        status__in=['unpaid', 'partial']
+    ).aggregate(total=Sum('remaining_balance'))['total'] or 0
+    
+    context = {
+        'credits': credits,
+        'filter_status': filter_status,
+        'total_outstanding': total_outstanding,
+    }
+    return render(request, 'credit.html', context)
+
+
+@login_required
+def credit_add_payment(request, pk):
+    credit = get_object_or_404(CreditRecord, pk=pk)
+    
+    if request.method == 'POST':
+        try:
+            amount_str = request.POST.get('amount', '')
+            if not amount_str:
+                messages.error(request, 'Please enter an amount.')
+                return redirect('credit_list')
+            
+            amount = Decimal(str(amount_str))
+            if amount <= 0:
+                messages.error(request, 'Please enter a valid amount.')
+                return redirect('credit_list')
+            
+            if amount > credit.remaining_balance:
+                messages.error(request, f'Amount exceeds remaining balance of ₱{credit.remaining_balance}.')
+                return redirect('credit_list')
+            
+            # Create payment record
+            CreditPayment.objects.create(
+                credit_record=credit,
+                amount=amount,
+                created_by=request.user
+            )
+            
+            # Update remaining balance and status
+            credit.remaining_balance -= amount
+            if credit.remaining_balance <= 0:
+                credit.remaining_balance = 0
+                credit.status = 'paid'
+            else:
+                credit.status = 'partial'
+            credit.save()
+            
+            # If payment made on credit sale, also record as sale revenue
+            from .models import Sale, SaleItem
+            Sale.objects.create(
+                total_amount=amount,
+                payment_type='credit_payment',
+                created_by=request.user
+            )
+            
+            messages.success(request, f'Payment of ₱{amount:.2f} recorded for {credit.customer_name}.')
+        except ValueError:
+            messages.error(request, 'Invalid amount. Please enter a number.')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+    
+    return redirect('credit_list')
+
+
+@login_required
+@owner_required
+def credit_delete(request, pk):
+    credit = get_object_or_404(CreditRecord, pk=pk)
+    customer_name = credit.customer_name
+    credit.delete()
+    messages.success(request, f'Credit record for {customer_name} has been deleted.')
+    return redirect('credit_list')
 
 
 # ==================== API VIEWS ====================

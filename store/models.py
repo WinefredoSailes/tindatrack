@@ -133,6 +133,7 @@ class Sale(models.Model):
         ('cash', 'Cash'),
         ('gcash', 'GCash'),
         ('other', 'Other'),
+        ('credit_payment', 'Credit Payment'),
     ]
     sale_date = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -186,3 +187,48 @@ class Purchase(models.Model):
                 expiry_date=self.expiry_date,
                 purchase_date=self.purchase_date,
             )
+
+
+class CreditRecord(models.Model):
+    STATUS_CHOICES = [
+        ('unpaid', 'Unpaid'),
+        ('partial', 'Partial'),
+        ('paid', 'Paid'),
+    ]
+    customer_name = models.CharField(max_length=200)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    remaining_balance = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unpaid')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='credit_records')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.customer_name} - ₱{self.remaining_balance} ({self.status})"
+
+
+class CreditItem(models.Model):
+    credit_record = models.ForeignKey(CreditRecord, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    quantity = models.IntegerField()
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.product.name} x {self.quantity}"
+
+
+class CreditPayment(models.Model):
+    credit_record = models.ForeignKey(CreditRecord, on_delete=models.CASCADE, related_name='payments')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='credit_payments')
+
+    class Meta:
+        ordering = ['-payment_date']
+
+    def __str__(self):
+        return f"₱{self.amount} on {self.payment_date.strftime('%Y-%m-%d')}"

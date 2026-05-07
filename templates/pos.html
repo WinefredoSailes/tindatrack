@@ -79,11 +79,19 @@
 
             <div class="mb-4">
                 <label class="block text-sm font-medium text-text-secondary mb-1">Payment Type</label>
-                <select id="paymentType" class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                <select id="paymentType" class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary" onchange="toggleCreditField()">
                     <option value="cash">Cash</option>
                     <option value="gcash">GCash</option>
                     <option value="other">Other</option>
+                    <option value="credit">Credit / Utang</option>
                 </select>
+            </div>
+
+            <!-- Credit Customer Name (shown when Credit is selected) -->
+            <div id="creditCustomerField" class="mb-4 hidden">
+                <label class="block text-sm font-medium text-text-secondary mb-1">Customer Name</label>
+                <input type="text" id="creditCustomerName" placeholder="Enter customer name"
+                    class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
             </div>
 
             <button onclick="confirmSale()" id="completeSaleBtn"
@@ -201,6 +209,16 @@
         }
     }
 
+    function toggleCreditField() {
+        const paymentType = document.getElementById('paymentType').value;
+        const creditField = document.getElementById('creditCustomerField');
+        if (paymentType === 'credit') {
+            creditField.classList.remove('hidden');
+        } else {
+            creditField.classList.add('hidden');
+        }
+    }
+
     function confirmSale() {
         if (cart.length === 0) return;
 
@@ -227,6 +245,13 @@
         closeConfirmModal();
 
         const paymentType = document.getElementById('paymentType').value;
+        const customerName = document.getElementById('creditCustomerName').value;
+        
+        // Validate credit has customer name
+        if (paymentType === 'credit' && !customerName.trim()) {
+            alert('Please enter customer name for credit / utang.');
+            return;
+        }
 
         fetch('{% url "process_sale" %}', {
             method: 'POST',
@@ -236,15 +261,22 @@
             },
             body: JSON.stringify({
                 items: cart,
-                payment_type: paymentType
+                payment_type: paymentType,
+                customer_name: customerName
             })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Sale completed! Total: ₱' + data.total);
+                if (paymentType === 'credit') {
+                    const message = data.message || 'Credit / Utang recorded!';
+                    alert(message);
+                } else {
+                    alert('Sale completed! Total: ₱' + data.total);
+                }
                 cart = [];
                 document.getElementById('cashTendered').value = '';
+                document.getElementById('creditCustomerName').value = '';
                 document.getElementById('changeAmount').textContent = '₱0.00';
                 document.getElementById('changeAmount').className = 'text-xl font-bold text-primary-light';
                 renderCart();
