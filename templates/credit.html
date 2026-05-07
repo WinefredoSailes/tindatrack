@@ -31,68 +31,80 @@
         </a>
     </div>
 
-    <!-- Credit Records -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <!-- Credit Records - Masonry layout using CSS columns -->
+    <div class="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">
     {% for credit in credits %}
-    <div class="bg-bg-card rounded-xl shadow-lg border border-bg-hover overflow-hidden">
-        <div class="p-4 flex justify-between items-start border-b border-bg-hover">
+    <div class="bg-bg-card rounded-xl shadow-lg border border-bg-hover overflow-hidden break-inside-avoid">
+        <!-- Clickable Header -->
+        <div class="p-4 flex justify-between items-start border-b border-bg-hover cursor-pointer" onclick="toggleCreditDetails('{{ credit.id }}')">
             <div>
                 <h3 class="text-lg font-bold text-text-primary">{{ credit.customer_name }}</h3>
-                <p class="text-sm text-text-secondary">Created: {{ credit.created_at|date:"M d, Y g:i A" }}</p>
+                <p class="text-sm text-text-secondary">Total: ₱{{ credit.total_amount|floatformat:2 }} | Balance: ₱{{ credit.remaining_balance|floatformat:2 }}</p>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
                 <span class="px-3 py-1 rounded-full text-sm font-medium 
                     {% if credit.status == 'unpaid' %}bg-danger text-white
                     {% elif credit.status == 'partial' %}bg-warning text-black
                     {% else %}bg-success text-white{% endif %}">
                     {{ credit.get_status_display }}
                 </span>
-                {% if credit.status != 'paid' %}
+                <svg id="chevron-{{ credit.id }}" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-text-secondary transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+        </div>
+
+        <!-- Collapsible Details -->
+        <div id="details-{{ credit.id }}" class="hidden">
+            <!-- Items -->
+            <div class="p-4">
+                <p class="text-sm font-medium text-text-secondary mb-2">Items:</p>
+                {% for item in credit.items.all %}
+                <div class="flex justify-between py-1">
+                    <span class="text-text-primary">{{ item.product.name }} x{{ item.quantity }}</span>
+                    <span class="text-text-primary">= ₱{{ item.subtotal|floatformat:2 }}</span>
+                </div>
+                {% endfor %}
+                
+                <div class="border-t border-bg-hover mt-2 pt-2 flex justify-between font-bold">
+                    <span class="text-text-primary">Total</span>
+                    <span class="text-success">₱{{ credit.total_amount|floatformat:2 }}</span>
+                </div>
+            </div>
+
+            <!-- Payment History -->
+            {% if credit.payments.exists %}
+            <div class="px-4 pb-4">
+                <p class="text-sm font-medium text-text-secondary mb-2">Payment History:</p>
+                {% for payment in credit.payments.all %}
+                <div class="flex justify-between py-1 text-sm">
+                    <span class="text-text-secondary">₱{{ payment.amount|floatformat:2 }} on {{ payment.payment_date|date:"M d, Y" }}</span>
+                </div>
+                {% endfor %}
+                <div class="border-t border-bg-hover mt-2 pt-2 flex justify-between font-bold">
+                    <span class="text-text-primary">Remaining</span>
+                    <span class="text-danger">₱{{ credit.remaining_balance|floatformat:2 }}</span>
+                </div>
+            </div>
+            {% elif credit.status != 'unpaid' %}
+            <div class="px-4 pb-4">
+                <div class="border-t border-bg-hover mt-2 pt-2 flex justify-between font-bold">
+                    <span class="text-text-primary">Remaining</span>
+                    <span class="text-danger">₱{{ credit.remaining_balance|floatformat:2 }}</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Action Button -->
+            {% if credit.status != 'paid' %}
+            <div class="px-4 pb-4">
                 <button onclick="showPaymentModal({{ credit.id }}, '{{ credit.customer_name }}', {{ credit.remaining_balance }})"
-                    class="px-3 py-1 bg-primary-light text-text-primary rounded-lg text-sm hover:bg-primary">
+                    class="w-full py-2 bg-primary-light text-text-primary rounded-lg text-sm hover:bg-primary">
                     Add Payment
                 </button>
-                {% endif %}
             </div>
+            {% endif %}
         </div>
-
-        <!-- Items -->
-        <div class="p-4">
-            {% for item in credit.items.all %}
-            <div class="flex justify-between py-1">
-                <span class="text-text-primary">{{ item.product.name }} x{{ item.quantity }}</span>
-                <span class="text-text-primary">= ₱{{ item.subtotal|floatformat:2 }}</span>
-            </div>
-            {% endfor %}
-            
-            <div class="border-t border-bg-hover mt-2 pt-2 flex justify-between font-bold">
-                <span class="text-text-primary">Total</span>
-                <span class="text-success">₱{{ credit.total_amount|floatformat:2 }}</span>
-            </div>
-        </div>
-
-        <!-- Payment History -->
-        {% if credit.payments.exists %}
-        <div class="px-4 pb-4">
-            <p class="text-sm font-medium text-text-secondary mb-2">Payment History:</p>
-            {% for payment in credit.payments.all %}
-            <div class="flex justify-between py-1 text-sm">
-                <span class="text-text-secondary">₱{{ payment.amount|floatformat:2 }} on {{ payment.payment_date|date:"M d, Y" }}</span>
-            </div>
-            {% endfor %}
-            <div class="border-t border-bg-hover mt-2 pt-2 flex justify-between font-bold">
-                <span class="text-text-primary">Remaining</span>
-                <span class="text-danger">₱{{ credit.remaining_balance|floatformat:2 }}</span>
-            </div>
-        </div>
-        {% elif credit.status != 'unpaid' %}
-        <div class="px-4 pb-4">
-            <div class="border-t border-bg-hover mt-2 pt-2 flex justify-between font-bold">
-                <span class="text-text-primary">Remaining</span>
-                <span class="text-danger">₱{{ credit.remaining_balance|floatformat:2 }}</span>
-            </div>
-        </div>
-        {% endif %}
     </div>
     {% empty %}
     <div class="col-span-3 text-center py-12">
@@ -126,6 +138,19 @@
 </div>
 
 <script>
+    function toggleCreditDetails(creditId) {
+        const details = document.getElementById('details-' + creditId);
+        const chevron = document.getElementById('chevron-' + creditId);
+        
+        if (details.classList.contains('hidden')) {
+            details.classList.remove('hidden');
+            chevron.style.transform = 'rotate(180deg)';
+        } else {
+            details.classList.add('hidden');
+            chevron.style.transform = 'rotate(0deg)';
+        }
+    }
+
     function showPaymentModal(creditId, customerName, remaining) {
         document.getElementById('paymentCustomer').textContent = 'Customer: ' + customerName;
         document.getElementById('paymentRemaining').textContent = '₱' + remaining.toFixed(2);

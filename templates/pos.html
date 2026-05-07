@@ -26,16 +26,16 @@
         <!-- Product Grid -->
         <div class="flex-1 bg-bg-card rounded-xl shadow-lg p-4 overflow-y-auto border border-bg-hover">
             <h2 class="text-lg font-semibold text-text-primary mb-4">Products</h2>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="productGrid">
+            <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2" id="productGrid">
                 {% for product in products %}
                 <button type="button" onclick="addToCart({{ product.id }}, '{{ product.name }}', {{ product.selling_price }}, {{ product.current_stock }})"
-                    class="p-4 border border-bg-hover rounded-lg hover:border-primary-light hover:bg-bg-hover transition text-left
+                    class="p-2 border border-bg-hover rounded-lg hover:border-primary-light hover:bg-bg-hover transition text-left
                     {% if product.current_stock == 0 %}opacity-50 cursor-not-allowed{% endif %}"
                     {% if product.current_stock == 0 %}disabled{% endif %}>
-                    <p class="font-medium text-text-primary">{{ product.name }}</p>
-                    <p class="text-success font-bold">₱{{ product.selling_price }}</p>
-                    <p class="text-sm {% if product.is_low_stock %}text-danger{% else %}text-text-secondary{% endif %}">
-                        Stock: {{ product.current_stock }}
+                    <p class="text-sm font-medium text-text-primary truncate">{{ product.name }}</p>
+                    <p class="text-xs text-success font-bold">₱{{ product.selling_price }}</p>
+                    <p class="text-xs {% if product.is_low_stock %}text-danger{% else %}text-text-secondary{% endif %}">
+                        {{ product.current_stock }}
                     </p>
                 </button>
                 {% empty %}
@@ -170,19 +170,19 @@
             const subtotal = item.price * item.quantity;
             total += subtotal;
             html += `
-                <div class="flex justify-between items-center py-2 border-b border-bg-hover">
+                <div class="flex justify-between items-center py-1 border-b border-bg-hover">
                     <div class="flex-1">
-                        <p class="font-medium text-text-primary">${item.name}</p>
-                        <p class="text-sm text-text-secondary">₱${item.price} each</p>
+                        <p class="text-sm font-medium text-text-primary truncate">${item.name}</p>
+                        <p class="text-xs text-text-secondary">₱${item.price} each</p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button onclick="updateQuantity(${item.product_id}, -1)" class="w-8 h-8 rounded bg-bg-hover hover:bg-primary-light text-text-primary">-</button>
-                        <span class="w-8 text-center text-text-primary">${item.quantity}</span>
-                        <button onclick="updateQuantity(${item.product_id}, 1)" class="w-8 h-8 rounded bg-bg-hover hover:bg-primary-light text-text-primary">+</button>
+                    <div class="flex items-center gap-1">
+                        <button onclick="updateQuantity(${item.product_id}, -1)" class="w-6 h-6 rounded bg-bg-hover hover:bg-primary-light text-text-primary">-</button>
+                        <span class="w-6 text-center text-xs text-text-primary">${item.quantity}</span>
+                        <button onclick="updateQuantity(${item.product_id}, 1)" class="w-6 h-6 rounded bg-bg-hover hover:bg-primary-light text-text-primary">+</button>
                     </div>
-                    <div class="text-right ml-4">
-                        <p class="font-medium text-text-primary">₱${subtotal.toFixed(2)}</p>
-                        <button onclick="removeFromCart(${item.product_id})" class="text-danger text-sm hover:underline">Remove</button>
+                    <div class="text-right ml-2 flex items-center gap-2">
+                        <p class="text-sm font-medium text-text-primary">₱${subtotal.toFixed(2)}</p>
+                        <button onclick="removeFromCart(${item.product_id})" class="text-danger text-xs hover:underline">X</button>
                     </div>
                 </div>
             `;

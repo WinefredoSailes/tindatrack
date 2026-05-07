@@ -198,65 +198,6 @@
     </div>
     {% endif %}
 
-    <!-- Credit Report -->
-    {% if report_type == 'credit' %}
-    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
-        <h2 class="text-lg font-semibold text-text-primary mb-4">Credit / Utang Report</h2>
-        
-        <div class="grid grid-cols-3 gap-4 mb-6">
-            <div class="bg-bg-main rounded-lg p-4">
-                <p class="text-sm text-text-secondary">New Credit Today</p>
-                <p class="text-xl font-bold text-danger">₱{{ credit_new_today|floatformat:2 }}</p>
-            </div>
-            <div class="bg-bg-main rounded-lg p-4">
-                <p class="text-sm text-text-secondary">Payments Received Today</p>
-                <p class="text-xl font-bold text-success">₱{{ credit_payments_today|floatformat:2 }}</p>
-            </div>
-            <div class="bg-bg-main rounded-lg p-4">
-                <p class="text-sm text-text-secondary">Total Outstanding</p>
-                <p class="text-xl font-bold text-danger">₱{{ credit_outstanding|floatformat:2 }}</p>
-            </div>
-        </div>
-
-        <h3 class="font-semibold text-text-primary mb-4">Credit Records</h3>
-        <table class="w-full">
-            <thead class="bg-bg-main">
-                <tr class="text-left text-sm text-text-secondary">
-                    <th class="px-4 py-2">Customer</th>
-                    <th class="px-4 py-2">Date</th>
-                    <th class="px-4 py-2">Total</th>
-                    <th class="px-4 py-2">Paid</th>
-                    <th class="px-4 py-2">Remaining</th>
-                    <th class="px-4 py-2">Status</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-bg-hover">
-                {% for credit in credit_records %}
-                <tr class="hover:bg-bg-hover">
-                    <td class="px-4 py-3 text-text-primary">{{ credit.customer_name }}</td>
-                    <td class="px-4 py-3 text-text-secondary">{{ credit.created_at|date:"M d, Y" }}</td>
-                    <td class="px-4 py-3 text-text-primary">₱{{ credit.total_amount|floatformat:2 }}</td>
-                    <td class="px-4 py-3 text-success">₱{{ credit.paid|floatformat:2 }}</td>
-                    <td class="px-4 py-3 text-danger">₱{{ credit.remaining_balance|floatformat:2 }}</td>
-                    <td class="px-4 py-3">
-                        <span class="px-2 py-1 rounded text-xs 
-                            {% if credit.status == 'unpaid' %}bg-danger text-white
-                            {% elif credit.status == 'partial' %}bg-warning text-black
-                            {% else %}bg-success text-white{% endif %}">
-                            {{ credit.get_status_display }}
-                        </span>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" class="px-4 py-8 text-center text-text-secondary">No credit records</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
-
     <!-- Sales Velocity Report -->
     {% if report_type == 'velocity' %}
     <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
@@ -319,6 +260,88 @@
             </div>
         </div>
     </div>
+    {% endif %}
+
+    <!-- Credit Report -->
+    {% if report_type == 'credit' %}
+    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="bg-bg-main rounded-lg p-4">
+                <p class="text-sm text-text-secondary">New Credit Today</p>
+                <p class="text-xl font-bold text-warning">₱{{ credit_new_today|floatformat:2 }}</p>
+            </div>
+            <div class="bg-bg-main rounded-lg p-4">
+                <p class="text-sm text-text-secondary">Payments Today</p>
+                <p class="text-xl font-bold text-success">₱{{ credit_payments_today|floatformat:2 }}</p>
+            </div>
+            <div class="bg-bg-main rounded-lg p-4">
+                <p class="text-sm text-text-secondary">Total Outstanding</p>
+                <p class="text-xl font-bold text-danger">₱{{ credit_outstanding|floatformat:2 }}</p>
+            </div>
+        </div>
+
+        <h3 class="font-semibold text-text-primary mb-4">All Credit Records</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-bg-hover">
+                        <th class="px-4 py-2 text-left text-text-secondary">Customer</th>
+                        <th class="px-4 py-2 text-left text-text-secondary">Date</th>
+                        <th class="px-4 py-2 text-right text-text-secondary">Total</th>
+                        <th class="px-4 py-2 text-right text-text-secondary">Paid</th>
+                        <th class="px-4 py-2 text-right text-text-secondary">Balance</th>
+                        <th class="px-4 py-2 text-center text-text-secondary">Status</th>
+                        {% if user.profile.is_owner %}
+                        <th class="px-4 py-2 text-center text-text-secondary">Action</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for credit in credit_records %}
+                    <tr class="border-b border-bg-hover">
+                        <td class="px-4 py-2 text-text-primary font-medium">{{ credit.customer_name }}</td>
+                        <td class="px-4 py-2 text-text-secondary">{{ credit.created_at|date:"M d, Y" }}</td>
+                        <td class="px-4 py-2 text-right text-text-primary">₱{{ credit.total_amount|floatformat:2 }}</td>
+                        <td class="px-4 py-2 text-right text-success">₱{{ credit.paid|floatformat:2 }}</td>
+                        <td class="px-4 py-2 text-right text-danger">₱{{ credit.remaining_balance|floatformat:2 }}</td>
+                        <td class="px-4 py-2 text-center">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                {% if credit.status == 'unpaid' %}bg-danger text-white
+                                {% elif credit.status == 'partial' %}bg-warning text-black
+                                {% else %}bg-success text-white{% endif %}">
+                                {{ credit.get_status_display }}
+                            </span>
+                        </td>
+                        {% if user.profile.is_owner and credit.status == 'paid' %}
+                        <td class="px-4 py-2 text-center">
+                            <button onclick="confirmDeleteCredit({{ credit.id }}, '{{ credit.customer_name }}')"
+                                class="text-danger hover:text-red-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </td>
+                        {% else %}
+                        <td class="px-4 py-2 text-center">-</td>
+                        {% endif %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-4 py-4 text-center text-text-secondary">No credit records</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function confirmDeleteCredit(creditId, customerName) {
+            if (confirm('Delete credit record for ' + customerName + '?')) {
+                window.location.href = '/credit/' + creditId + '/delete/';
+            }
+        }
+    </script>
     {% endif %}
 </div>
 {% endblock %}

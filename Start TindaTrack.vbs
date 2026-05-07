@@ -7,9 +7,9 @@ scriptPath = WScript.ScriptFullName
 Dim appFolder
 appFolder = Left(scriptPath, InStrRev(scriptPath, "\") - 1)
 
-' Build command to run Django
+' Build command to run Django with venv
 Dim cmd
-cmd = "cmd /c cd /d " & appFolder & " && python manage.py runserver"
+cmd = "cmd /c cd /d " & appFolder & " && venv\Scripts\python.exe manage.py runserver"
 
 ' Run hidden (0), don't wait (False)
 WshShell.Run cmd, 0, False

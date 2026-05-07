@@ -584,6 +584,7 @@ def reports(request):
         for credit in CreditRecord.objects.all():
             paid = credit.total_amount - credit.remaining_balance
             credit_records.append({
+                'id': credit.id,
                 'customer_name': credit.customer_name,
                 'created_at': credit.created_at,
                 'total_amount': credit.total_amount,
@@ -689,6 +690,7 @@ def activate_user(request, pk):
 # ==================== CREDIT / UTANG VIEWS ====================
 
 @login_required
+@teller_can_view
 def credit_list(request):
     filter_status = request.GET.get('status', 'all')
     
@@ -730,6 +732,7 @@ def credit_list(request):
 
 
 @login_required
+@teller_can_view
 def credit_add_payment(request, pk):
     credit = get_object_or_404(CreditRecord, pk=pk)
     
@@ -786,10 +789,15 @@ def credit_add_payment(request, pk):
 @owner_required
 def credit_delete(request, pk):
     credit = get_object_or_404(CreditRecord, pk=pk)
+    
+    if credit.status != 'paid':
+        messages.error(request, 'Only fully paid credit records can be deleted.')
+        return redirect('reports')
+    
     customer_name = credit.customer_name
     credit.delete()
     messages.success(request, f'Credit record for {customer_name} has been deleted.')
-    return redirect('credit_list')
+    return redirect('reports')
 
 
 # ==================== API VIEWS ====================

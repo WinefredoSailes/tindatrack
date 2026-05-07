@@ -6,11 +6,23 @@ echo.
 
 cd /d "%~dp0"
 
+REM Check if venv exists
+if not exist venv (
+    echo Creating virtual environment...
+    python -m venv venv
+    echo Virtual environment created!
+    echo.
+    echo Installing requirements...
+    call venv\Scripts\pip.exe install -r requirements.txt
+    echo Requirements installed!
+    echo.
+)
+
 REM Check if database exists
 if not exist db.sqlite3 (
     echo Creating database...
-    python manage.py migrate
-    python setup.py
+    call venv\Scripts\python.exe manage.py migrate
+    call venv\Scripts\python.exe setup.py
     echo Database created successfully!
     echo.
 )
@@ -18,6 +30,6 @@ if not exist db.sqlite3 (
 echo Starting server...
 echo Open your browser and go to: http://127.0.0.1:8000
 echo.
-python manage.py runserver
+call venv\Scripts\python.exe manage.py runserver
 
 pause

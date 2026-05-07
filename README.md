@@ -9,28 +9,52 @@ A simple inventory management and point-of-sale system for sari-sari stores.
 
 ## Quick Start (First Time Setup)
 
-### 1. Install Python (if not installed)
+### Option A: Using Launcher Scripts (Recommended)
+
+1. Install Python from: https://www.python.org/downloads/
+   - Make sure to check "Add Python to PATH" during installation
+
+2. Double-click `run_app.bat` in this folder
+   - It will automatically create the virtual environment
+   - Install all requirements
+   - Create the database
+   - Start the server
+
+3. Open your browser and go to: http://127.0.0.1:8000
+
+### Option B: Manual Setup
+
+#### 1. Install Python (if not installed)
 Download from: https://www.python.org/downloads/
 - Make sure to check "Add Python to PATH" during installation
 
-### 2. Install Dependencies
-Open Command Prompt in this folder and run:
+#### 2. Create Virtual Environment
+```
+python -m venv venv
+```
+
+#### 3. Activate Virtual Environment
+```
+venv\Scripts\activate
+```
+
+#### 4. Install Dependencies
 ```
 pip install -r requirements.txt
 ```
 
-### 3. Setup Database
+#### 5. Setup Database
 ```
 python manage.py migrate
 ```
 
-### 4. Create Admin Account
+#### 6. Create Admin Account
 ```
 python manage.py createsuperuser
 ```
 Follow the prompts to create your admin username and password.
 
-### 5. Run the App
+#### 7. Run the App
 ```
 python manage.py runserver
 ```
@@ -52,13 +76,23 @@ Then open your browser and go to: http://127.0.0.1:8000
 
 ## To Transfer to Another Computer
 
-1. Copy the entire folder
+### Method 1: Copy Folder with venv (Recommended for same Python version)
+1. Copy the entire folder to the new computer
+2. Double-click `run_app.bat`
+3. Done!
+
+### Method 2: Fresh Install (If Python version differs)
+1. Copy the entire folder (or just the files, not venv/)
 2. On the new computer:
    - Install Python
+   - Run `python -m venv venv`
+   - Run `venv\Scripts\activate`
    - Run `pip install -r requirements.txt`
    - Run `python manage.py migrate`
    - Run `python manage.py createsuperuser`
    - Run `python manage.py runserver`
+
+**Important:** Delete `db.sqlite3` if copying to a new computer to start fresh, or keep it to preserve all data.
 
 ## Default Login (after createsuperuser)
 - Username: (what you created)
@@ -84,34 +118,40 @@ The theme preference is saved automatically.
 **Missing packages:**
 - Run: `pip install -r requirements.txt`
 
+**venv activation issues:**
+- On Windows, make sure to run: `venv\Scripts\activate`
+- If you get security error, run PowerShell as Administrator and run: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+
 ## Launcher Scripts
 
 This folder includes convenient shortcuts to run the app:
 
 | File | Description |
 |------|-------------|
-| `run_app.bat` | Double-click to open app in browser (shows command window) |
+| `run_app.bat` | Double-click to open app (auto-creates venv if missing, shows window) |
 | `Start TindaTrack.vbs` | Double-click, opens app in browser (no command window) |
-| `Start TindaTrack Hidden.bat` | Runs app silently in background |
+| `launcher.vbs` | Alternative launcher (hidden) |
 
 **How to use:**
-1. First time: Follow steps 1-4 above (install Python, pip install, migrate, createsuperuser)
-2. After setup, just double-click `run_app.bat` or `Start TindaTrack.vbs`
+1. First time: Double-click `run_app.bat` - it handles everything automatically
+2. After setup, just double-click any launcher to start the app
 3. The app opens automatically in your browser
-
-**Note:** The launchers assume you've already run the initial setup (migrate + createsuperuser). They just run the server for you.
 
 ## Files Included
 
 ```
 ├── manage.py               - Django management script
-├── requirements.txt        - Python dependencies
-├── README.md              - This file
-├── run_app.bat            - Quick launcher (shows window)
-├── Start TindaTrack.vbs    - Quick launcher (hidden)
-├── Start TindaTrack Hidden.bat - Silent launcher
+├── requirements.txt       - Python dependencies
+├── venv/                  - Virtual environment (created automatically)
+├── README.md             - This file
+├── run_app.bat           - Quick launcher (auto-setup)
+├── Start TindaTrack.vbs  - Quick launcher (hidden)
+├── launcher.vbs          - Alternative launcher (hidden)
 ├── tindatrack/            - Django project settings
-├── store/                 - Main application code
-├── templates/             - HTML templates
-└── db.sqlite3            - Database (created after migrate)
+├── store/                - Main application code
+├── templates/            - HTML templates
+└── db.sqlite3           - Database (created after migrate)
 ```
+
+## Engineered by
+TindaTrack - WSS @2026
