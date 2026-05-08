@@ -144,6 +144,7 @@ This folder includes convenient shortcuts to run the app:
 ├── requirements.txt       - Python dependencies
 ├── venv/                  - Virtual environment (created automatically)
 ├── README.md             - This file
+├── USER_GUIDE.md         - User manual (how to use the system)
 ├── run_app.bat           - Quick launcher (auto-setup)
 ├── Start TindaTrack.vbs  - Quick launcher (hidden)
 ├── launcher.vbs          - Alternative launcher (hidden)
@@ -152,6 +153,12 @@ This folder includes convenient shortcuts to run the app:
 ├── templates/            - HTML templates
 └── db.sqlite3           - Database (created after migrate)
 ```
+
+## Quick Start
+1. Double-click `run_app.bat`
+2. Open browser to http://127.0.0.1:8000
+3. Login with your admin account
+4. See **USER_GUIDE.md** for detailed instructions
 
 ## Engineered by
 TindaTrack - WSS @2026
