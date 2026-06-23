@@ -4,12 +4,44 @@ from django.db.models import Sum, F
 from django.utils import timezone
 
 
+class Client(models.Model):
+    SUBSCRIPTION_CHOICES = [
+        ('trial', 'Trial'),
+        ('active', 'Active'),
+        ('expired', 'Expired'),
+        ('locked', 'Locked'),
+    ]
+    name = models.CharField(max_length=200)
+    subdomain = models.CharField(max_length=100, unique=True)
+    is_active = models.BooleanField(default=True)
+    trial_end_date = models.DateField(null=True, blank=True)
+    subscription_status = models.CharField(max_length=20, choices=SUBSCRIPTION_CHOICES, default='trial')
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def is_subscription_valid(self):
+        if self.subscription_status == 'active':
+            return True
+        if self.subscription_status == 'trial' and self.trial_end_date:
+            return self.trial_end_date >= timezone.now().date()
+        return False
+
+
 class UserProfile(models.Model):
     ROLE_CHOICES = [
         ('owner', 'Owner'),
         ('teller', 'Teller'),
     ]
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='profiles', null=True, blank=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='teller')
 
     def __str__(self):
@@ -25,6 +57,7 @@ class UserProfile(models.Model):
 
 
 class Category(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='categories', null=True, blank=True)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
@@ -40,6 +73,7 @@ class Category(models.Model):
 
 
 class Product(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='products', null=True, blank=True)
     name = models.CharField(max_length=200)
     sku = models.CharField(max_length=50, blank=True, null=True, unique=True)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products')
@@ -100,6 +134,7 @@ class Product(models.Model):
 
 
 class StockBatch(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='stock_batches', null=True, blank=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='stock_batches')
     quantity = models.IntegerField()
     remaining_quantity = models.IntegerField()
@@ -135,6 +170,7 @@ class Sale(models.Model):
         ('other', 'Other'),
         ('credit_payment', 'Credit Payment'),
     ]
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='sales', null=True, blank=True)
     sale_date = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_type = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default='cash')
@@ -149,6 +185,7 @@ class Sale(models.Model):
 
 
 class SaleItem(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='sale_items', null=True, blank=True)
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     quantity = models.IntegerField()
@@ -160,6 +197,7 @@ class SaleItem(models.Model):
 
 
 class Purchase(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='purchases', null=True, blank=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='purchases')
     supplier_name = models.CharField(max_length=200, blank=True)
     quantity = models.IntegerField()
@@ -195,6 +233,7 @@ class CreditRecord(models.Model):
         ('partial', 'Partial'),
         ('paid', 'Paid'),
     ]
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='credit_records', null=True, blank=True)
     customer_name = models.CharField(max_length=200)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     remaining_balance = models.DecimalField(max_digits=10, decimal_places=2)
@@ -211,6 +250,7 @@ class CreditRecord(models.Model):
 
 
 class CreditItem(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='credit_items', null=True, blank=True)
     credit_record = models.ForeignKey(CreditRecord, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     quantity = models.IntegerField()
@@ -222,6 +262,7 @@ class CreditItem(models.Model):
 
 
 class CreditPayment(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='credit_payments', null=True, blank=True)
     credit_record = models.ForeignKey(CreditRecord, on_delete=models.CASCADE, related_name='payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_date = models.DateTimeField(auto_now_add=True)

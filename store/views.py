@@ -11,11 +11,18 @@ from django.utils import timezone
 from datetime import timedelta
 import json
 
-from .models import Category, Product, StockBatch, Sale, SaleItem, Purchase, UserProfile, CreditRecord, CreditItem, CreditPayment
+from .models import Client, Category, Product, StockBatch, Sale, SaleItem, Purchase, UserProfile, CreditRecord, CreditItem, CreditPayment
 from .forms import (
     LoginForm, UserCreationForm, UserEditForm,
     CategoryForm, ProductForm, PurchaseForm, SaleForm
 )
+
+
+# Tenant helper
+def get_client(request):
+    if hasattr(request, 'client') and request.client:
+        return request.client
+    return None
 
 
 # Decorator for owner-only views
@@ -54,6 +61,15 @@ def login_view(request):
             password = form.cleaned_data['password']
             user = authenticate(request, username=username, password=password)
             if user is not None:
+                # Check subscription
+                if hasattr(user, 'profile') and user.profile.client:
+                    client = user.profile.client
+                    if not client.is_active:
+                        messages.error(request, 'Your account has been deactivated. Contact support.')
+                        return render(request, 'login.html', {'form': LoginForm()})
+                    if not client.is_subscription_valid and not user.is_superuser:
+                        messages.error(request, 'Your subscription has expired. Contact support to renew.')
+                        return render(request, 'login.html', {'form': LoginForm()})
                 login(request, user)
                 return redirect('dashboard')
             else:
@@ -73,25 +89,26 @@ def logout_view(request):
 @login_required
 @teller_can_view
 def dashboard(request):
+    client = get_client(request)
     today = timezone.now().date()
 
     # Today's sales
-    today_sales = Sale.objects.filter(sale_date__date=today)
+    today_sales = Sale.objects.filter(client=client, sale_date__date=today)
     total_sales = today_sales.aggregate(total=Sum('total_amount'))['total'] or 0
     transaction_count = today_sales.count()
 
     # Today's credit payments received
-    today_credit_payments = CreditPayment.objects.filter(payment_date__date=today)
+    today_credit_payments = CreditPayment.objects.filter(client=client, payment_date__date=today)
     today_credit_received = today_credit_payments.aggregate(total=Sum('amount'))['total'] or 0
 
     # Total outstanding credit (all unpaid/partial)
     total_outstanding = CreditRecord.objects.filter(
-        status__in=['unpaid', 'partial']
+        client=client, status__in=['unpaid', 'partial']
     ).aggregate(total=Sum('remaining_balance'))['total'] or 0
 
     # Low stock items
     low_stock_products = []
-    for product in Product.objects.filter(is_active=True):
+    for product in Product.objects.filter(client=client, is_active=True):
         if product.is_low_stock:
             low_stock_products.append({
                 'name': product.name,
@@ -103,6 +120,7 @@ def dashboard(request):
     near_expiry_items = []
     warning_date = today + timedelta(days=7)
     for batch in StockBatch.objects.filter(
+        client=client,
         remaining_quantity__gt=0,
         expiry_date__lte=warning_date,
         expiry_date__gte=today,
@@ -133,6 +151,7 @@ def dashboard(request):
 @login_required
 @teller_can_view
 def products(request):
+    client = get_client(request)
     search = request.GET.get('search', '')
     category_filter = request.GET.get('category', '')
     stock_filter = request.GET.get('stock', '')
@@ -140,9 +159,9 @@ def products(request):
 
     # Filter by active status
     if status_filter == 'inactive':
-        products = Product.objects.filter(is_active=False).select_related('category')
+        products = Product.objects.filter(client=client, is_active=False).select_related('category')
     else:
-        products = Product.objects.filter(is_active=True).select_related('category')
+        products = Product.objects.filter(client=client, is_active=True).select_related('category')
 
     if search:
         products = products.filter(Q(name__icontains=search) | Q(sku__icontains=search))
@@ -155,7 +174,7 @@ def products(request):
     elif stock_filter == 'out':
         products = [p for p in products if p.current_stock == 0]
 
-    categories = Category.objects.filter(is_active=True)
+    categories = Category.objects.filter(client=client, is_active=True)
 
     context = {
         'products': products,
@@ -171,34 +190,38 @@ def products(request):
 @login_required
 @owner_required
 def add_product(request):
+    client = get_client(request)
     if request.method == 'POST':
-        form = ProductForm(request.POST)
+        form = ProductForm(request.POST, client=client)
         if form.is_valid():
-            form.save()
+            product = form.save(commit=False)
+            product.client = client
+            product.save()
             messages.success(request, 'Product added successfully!')
             return redirect('products')
     else:
-        form = ProductForm()
+        form = ProductForm(client=client)
 
-    categories = Category.objects.filter(is_active=True)
+    categories = Category.objects.filter(client=client, is_active=True)
     return render(request, 'product_form.html', {'form': form, 'categories': categories, 'title': 'Add Product'})
 
 
 @login_required
 @owner_required
 def edit_product(request, pk):
-    product = get_object_or_404(Product, pk=pk)
+    client = get_client(request)
+    product = get_object_or_404(Product, pk=pk, client=client)
 
     if request.method == 'POST':
-        form = ProductForm(request.POST, instance=product)
+        form = ProductForm(request.POST, instance=product, client=client)
         if form.is_valid():
             form.save()
             messages.success(request, 'Product updated successfully!')
             return redirect('products')
     else:
-        form = ProductForm(instance=product)
+        form = ProductForm(instance=product, client=client)
 
-    categories = Category.objects.filter(is_active=True)
+    categories = Category.objects.filter(client=client, is_active=True)
     stock_batches = product.stock_batches.all().order_by('purchase_date')
 
     return render(request, 'product_form.html', {
@@ -213,7 +236,8 @@ def edit_product(request, pk):
 @login_required
 @owner_required
 def archive_product(request, pk):
-    product = get_object_or_404(Product, pk=pk)
+    client = get_client(request)
+    product = get_object_or_404(Product, pk=pk, client=client)
     product.is_active = False
     product.save()
     messages.success(request, f'{product.name} has been archived.')
@@ -223,7 +247,8 @@ def archive_product(request, pk):
 @login_required
 @owner_required
 def unarchive_product(request, pk):
-    product = get_object_or_404(Product, pk=pk)
+    client = get_client(request)
+    product = get_object_or_404(Product, pk=pk, client=client)
     product.is_active = True
     product.save()
     messages.success(request, f'{product.name} has been restored.')
@@ -235,17 +260,21 @@ def unarchive_product(request, pk):
 @login_required
 @owner_required
 def categories(request):
-    categories = Category.objects.all()
+    client = get_client(request)
+    categories = Category.objects.filter(client=client)
     return render(request, 'categories.html', {'categories': categories})
 
 
 @login_required
 @owner_required
 def add_category(request):
+    client = get_client(request)
     if request.method == 'POST':
         form = CategoryForm(request.POST)
         if form.is_valid():
-            form.save()
+            category = form.save(commit=False)
+            category.client = client
+            category.save()
             messages.success(request, 'Category added successfully!')
             return redirect('categories')
     else:
@@ -256,7 +285,8 @@ def add_category(request):
 @login_required
 @owner_required
 def edit_category(request, pk):
-    category = get_object_or_404(Category, pk=pk)
+    client = get_client(request)
+    category = get_object_or_404(Category, pk=pk, client=client)
     if request.method == 'POST':
         form = CategoryForm(request.POST, instance=category)
         if form.is_valid():
@@ -273,8 +303,9 @@ def edit_category(request, pk):
 @login_required
 @teller_can_view
 def pos(request):
+    client = get_client(request)
     search = request.GET.get('search', '')
-    products = Product.objects.filter(is_active=True).select_related('category')
+    products = Product.objects.filter(client=client, is_active=True).select_related('category')
 
     if search:
         products = products.filter(Q(name__icontains=search) | Q(sku__icontains=search))
@@ -290,6 +321,7 @@ def pos(request):
 @teller_can_view
 @require_http_methods(["POST"])
 def process_sale(request):
+    client = get_client(request)
     try:
         data = json.loads(request.body)
         items = data.get('items', [])
@@ -302,7 +334,7 @@ def process_sale(request):
         # Calculate total
         total = 0
         for item in items:
-            product = Product.objects.get(pk=item['product_id'])
+            product = Product.objects.get(pk=item['product_id'], client=client)
             total += product.selling_price * item['quantity']
 
         # Handle Credit / Utang
@@ -312,6 +344,7 @@ def process_sale(request):
             
             # Check if customer already has unpaid or partial credit
             existing_credit = CreditRecord.objects.filter(
+                client=client,
                 customer_name__iexact=customer_name,
                 status__in=['unpaid', 'partial']
             ).first()
@@ -326,6 +359,7 @@ def process_sale(request):
             else:
                 # Create new credit record
                 credit = CreditRecord.objects.create(
+                    client=client,
                     customer_name=customer_name,
                     total_amount=total,
                     remaining_balance=total,
@@ -336,12 +370,13 @@ def process_sale(request):
             
             # Create credit items (snapshot of products)
             for item in items:
-                product = Product.objects.get(pk=item['product_id'])
+                product = Product.objects.get(pk=item['product_id'], client=client)
                 quantity = item['quantity']
                 unit_price = product.selling_price
                 subtotal = unit_price * quantity
                 
                 CreditItem.objects.create(
+                    client=client,
                     credit_record=credit,
                     product=product,
                     quantity=quantity,
@@ -368,8 +403,9 @@ def process_sale(request):
             
             return JsonResponse({'success': True, 'sale_id': credit.id, 'total': str(total), 'message': message})
 
-        # Regular sale (cash, gcash, other) - add to today's revenue
+        # Regular sale (cash, gcash, other)
         sale = Sale.objects.create(
+            client=client,
             total_amount=total,
             payment_type=payment_type,
             created_by=request.user
@@ -377,10 +413,9 @@ def process_sale(request):
 
         # Process each item with FIFO
         for item in items:
-            product = Product.objects.get(pk=item['product_id'])
+            product = Product.objects.get(pk=item['product_id'], client=client)
             quantity_needed = item['quantity']
 
-            # Get batches in order (FIFO)
             batches = product.stock_batches.filter(
                 remaining_quantity__gt=0
             ).order_by('purchase_date', 'expiry_date')
@@ -388,19 +423,16 @@ def process_sale(request):
             for batch in batches:
                 if quantity_needed <= 0:
                     break
-
-                # Check if batch is expired
                 if batch.is_expired:
                     continue
 
-                # Deduct from batch
                 deduct = min(batch.remaining_quantity, quantity_needed)
                 batch.remaining_quantity -= deduct
                 batch.save()
                 quantity_needed -= deduct
 
-                # Create sale item
                 SaleItem.objects.create(
+                    client=client,
                     sale=sale,
                     product=product,
                     quantity=deduct,
@@ -408,10 +440,9 @@ def process_sale(request):
                     subtotal=product.selling_price * deduct
                 )
 
-            # If still needed more after clearing all batches
             if quantity_needed > 0:
-                # Create sale item for remaining (should not happen in normal flow)
                 SaleItem.objects.create(
+                    client=client,
                     sale=sale,
                     product=product,
                     quantity=quantity_needed,
@@ -430,18 +461,20 @@ def process_sale(request):
 @login_required
 @owner_required
 def purchase(request):
-    purchases = Purchase.objects.all().select_related('product')[:20]
+    client = get_client(request)
+    purchases = Purchase.objects.filter(client=client).select_related('product')[:20]
 
     if request.method == 'POST':
-        form = PurchaseForm(request.POST)
+        form = PurchaseForm(request.POST, client=client)
         if form.is_valid():
             purchase = form.save(commit=False)
+            purchase.client = client
             purchase.created_by = request.user
             purchase.save()
             messages.success(request, 'Stock added successfully!')
             return redirect('purchase')
     else:
-        form = PurchaseForm()
+        form = PurchaseForm(client=client)
 
     context = {
         'form': form,
@@ -455,6 +488,7 @@ def purchase(request):
 @login_required
 @owner_required
 def reports(request):
+    client = get_client(request)
     report_type = request.GET.get('type', 'daily')
     date_str = request.GET.get('date', '')
     month_str = request.GET.get('month', '')
@@ -467,20 +501,18 @@ def reports(request):
         else:
             selected_date = today
 
-        sales = Sale.objects.filter(sale_date__date=selected_date)
+        sales = Sale.objects.filter(client=client, sale_date__date=selected_date)
         total_sales = sales.aggregate(total=Sum('total_amount'))['total'] or 0
 
-        purchases = Purchase.objects.filter(purchase_date=selected_date)
+        purchases = Purchase.objects.filter(client=client, purchase_date=selected_date)
         total_purchases = purchases.aggregate(total=Sum(F('quantity') * F('unit_cost')))['total'] or 0
 
         profit = total_sales - total_purchases
 
-        # Get transactions
         transactions = sales.order_by('-sale_date')
 
-        # Calculate expired value (rough estimate)
         expired_value = 0
-        for batch in StockBatch.objects.filter(remaining_quantity__gt=0, expiry_date__lt=today):
+        for batch in StockBatch.objects.filter(client=client, remaining_quantity__gt=0, expiry_date__lt=today):
             expired_value += batch.remaining_quantity * batch.unit_cost
 
         context = {
@@ -508,16 +540,16 @@ def reports(request):
             else:
                 end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
 
-        sales = Sale.objects.filter(sale_date__date__range=[start_date, end_date])
+        sales = Sale.objects.filter(client=client, sale_date__date__range=[start_date, end_date])
         total_sales = sales.aggregate(total=Sum('total_amount'))['total'] or 0
 
-        purchases = Purchase.objects.filter(purchase_date__range=[start_date, end_date])
+        purchases = Purchase.objects.filter(client=client, purchase_date__range=[start_date, end_date])
         total_purchases = purchases.aggregate(total=Sum(F('quantity') * F('unit_cost')))['total'] or 0
 
         profit = total_sales - total_purchases
 
-        # Top products
         top_products = SaleItem.objects.filter(
+            client=client,
             sale__sale_date__date__range=[start_date, end_date]
         ).values('product__name').annotate(
             total_qty=Sum('quantity'),
@@ -535,13 +567,14 @@ def reports(request):
         }
 
     elif report_type == 'inventory':
-        products = Product.objects.filter(is_active=True).select_related('category')
+        products = Product.objects.filter(client=client, is_active=True).select_related('category')
 
         low_stock = [p for p in products if p.is_low_stock]
 
         near_expiry = []
         warning_date = today + timedelta(days=7)
         for batch in StockBatch.objects.filter(
+            client=client,
             remaining_quantity__gt=0,
             expiry_date__lte=warning_date,
             expiry_date__gte=today,
@@ -561,27 +594,22 @@ def reports(request):
         }
     
     elif report_type == 'credit':
-        # Credit report
         today = timezone.now().date()
         
-        # New credit created today
-        credit_new_today = CreditRecord.objects.filter(created_at__date=today).aggregate(
+        credit_new_today = CreditRecord.objects.filter(client=client, created_at__date=today).aggregate(
             total=Sum('total_amount')
         )['total'] or 0
         
-        # Payments received today
-        credit_payments_today = CreditPayment.objects.filter(payment_date__date=today).aggregate(
+        credit_payments_today = CreditPayment.objects.filter(client=client, payment_date__date=today).aggregate(
             total=Sum('amount')
         )['total'] or 0
         
-        # Total outstanding
         credit_outstanding = CreditRecord.objects.filter(
-            status__in=['unpaid', 'partial']
+            client=client, status__in=['unpaid', 'partial']
         ).aggregate(total=Sum('remaining_balance'))['total'] or 0
         
-        # All credit records with paid amount
         credit_records = []
-        for credit in CreditRecord.objects.all():
+        for credit in CreditRecord.objects.filter(client=client):
             paid = credit.total_amount - credit.remaining_balance
             credit_records.append({
                 'id': credit.id,
@@ -603,12 +631,11 @@ def reports(request):
         }
 
     elif report_type == 'velocity':
-        # Sales Velocity - all time fast/slow moving items
-        fast_moving = SaleItem.objects.values('product__name').annotate(
+        fast_moving = SaleItem.objects.filter(client=client).values('product__name').annotate(
             total_qty=Sum('quantity')
         ).order_by('-total_qty')[:20]
 
-        slow_moving = SaleItem.objects.values('product__name').annotate(
+        slow_moving = SaleItem.objects.filter(client=client).values('product__name').annotate(
             total_qty=Sum('quantity')
         ).order_by('total_qty')[:10]
 
@@ -626,17 +653,22 @@ def reports(request):
 @login_required
 @owner_required
 def users(request):
-    users = User.objects.all().select_related('profile')
+    client = get_client(request)
+    users = User.objects.filter(profile__client=client).select_related('profile')
     return render(request, 'users.html', {'users': users})
 
 
 @login_required
 @owner_required
 def add_user(request):
+    client = get_client(request)
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
+            profile = user.profile
+            profile.client = client
+            profile.save()
             messages.success(request, f'User {user.username} created successfully!')
             return redirect('users')
     else:
@@ -647,7 +679,8 @@ def add_user(request):
 @login_required
 @owner_required
 def edit_user(request, pk):
-    user = get_object_or_404(User, pk=pk)
+    client = get_client(request)
+    user = get_object_or_404(User, pk=pk, profile__client=client)
 
     if request.method == 'POST':
         form = UserEditForm(request.POST, instance=user)
@@ -667,7 +700,8 @@ def edit_user(request, pk):
 @login_required
 @owner_required
 def deactivate_user(request, pk):
-    user = get_object_or_404(User, pk=pk)
+    client = get_client(request)
+    user = get_object_or_404(User, pk=pk, profile__client=client)
     if user == request.user:
         messages.error(request, "You cannot deactivate yourself.")
     else:
@@ -680,7 +714,8 @@ def deactivate_user(request, pk):
 @login_required
 @owner_required
 def activate_user(request, pk):
-    user = get_object_or_404(User, pk=pk)
+    client = get_client(request)
+    user = get_object_or_404(User, pk=pk, profile__client=client)
     user.is_active = True
     user.save()
     messages.success(request, f'User {user.username} has been activated.')
@@ -692,11 +727,12 @@ def activate_user(request, pk):
 @login_required
 @teller_can_view
 def credit_list(request):
+    client = get_client(request)
     filter_status = request.GET.get('status', 'all')
     
     # Recalculate balances if needed
     if request.GET.get('recalculate') == '1':
-        for credit in CreditRecord.objects.all():
+        for credit in CreditRecord.objects.filter(client=client):
             paid = credit.payments.aggregate(total=Sum('amount'))['total'] or 0
             credit.remaining_balance = credit.total_amount - paid
             if credit.remaining_balance <= 0:
@@ -709,7 +745,7 @@ def credit_list(request):
             credit.save()
         messages.success(request, 'Credit balances recalculated.')
     
-    credits = CreditRecord.objects.all()
+    credits = CreditRecord.objects.filter(client=client)
     
     if filter_status == 'unpaid':
         credits = credits.filter(status='unpaid')
@@ -720,7 +756,7 @@ def credit_list(request):
     
     # Calculate total outstanding
     total_outstanding = CreditRecord.objects.filter(
-        status__in=['unpaid', 'partial']
+        client=client, status__in=['unpaid', 'partial']
     ).aggregate(total=Sum('remaining_balance'))['total'] or 0
     
     context = {
@@ -734,7 +770,8 @@ def credit_list(request):
 @login_required
 @teller_can_view
 def credit_add_payment(request, pk):
-    credit = get_object_or_404(CreditRecord, pk=pk)
+    client = get_client(request)
+    credit = get_object_or_404(CreditRecord, pk=pk, client=client)
     
     if request.method == 'POST':
         try:
@@ -754,6 +791,7 @@ def credit_add_payment(request, pk):
             
             # Create payment record
             CreditPayment.objects.create(
+                client=client,
                 credit_record=credit,
                 amount=amount,
                 created_by=request.user
@@ -769,8 +807,8 @@ def credit_add_payment(request, pk):
             credit.save()
             
             # If payment made on credit sale, also record as sale revenue
-            from .models import Sale, SaleItem
             Sale.objects.create(
+                client=client,
                 total_amount=amount,
                 payment_type='credit_payment',
                 created_by=request.user
@@ -788,7 +826,8 @@ def credit_add_payment(request, pk):
 @login_required
 @owner_required
 def credit_delete(request, pk):
-    credit = get_object_or_404(CreditRecord, pk=pk)
+    client = get_client(request)
+    credit = get_object_or_404(CreditRecord, pk=pk, client=client)
     
     if credit.status != 'paid':
         messages.error(request, 'Only fully paid credit records can be deleted.')
@@ -804,5 +843,91 @@ def credit_delete(request, pk):
 
 @login_required
 def api_products(request):
-    products = Product.objects.filter(is_active=True).values('id', 'name', 'sku', 'selling_price', 'current_stock')
+    client = get_client(request)
+    products = Product.objects.filter(client=client, is_active=True).values('id', 'name', 'sku', 'selling_price', 'current_stock')
     return JsonResponse(list(products), safe=False)
+
+
+# ==================== CLIENT MANAGEMENT (Superuser only) ====================
+
+@login_required
+def client_list(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('dashboard')
+    
+    clients = Client.objects.all()
+    return render(request, 'clients.html', {'clients': clients})
+
+
+@login_required
+def client_add(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        subdomain = request.POST.get('subdomain', '').strip()
+        trial_days = int(request.POST.get('trial_days', 15))
+        subscription_status = request.POST.get('subscription_status', 'trial')
+        
+        if not name or not subdomain:
+            messages.error(request, 'Name and subdomain are required.')
+            return redirect('client_list')
+        
+        if Client.objects.filter(subdomain=subdomain).exists():
+            messages.error(request, f'Subdomain "{subdomain}" is already taken.')
+            return redirect('client_list')
+        
+        client = Client.objects.create(
+            name=name,
+            subdomain=subdomain,
+            subscription_status=subscription_status,
+            trial_end_date=timezone.now().date() + timedelta(days=trial_days) if subscription_status == 'trial' else None,
+            notes=request.POST.get('notes', ''),
+        )
+        
+        # Create owner user for the client
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        
+        if username and password:
+            user = User.objects.create_user(username=username, password=password)
+            UserProfile.objects.create(user=user, client=client, role='owner')
+        
+        messages.success(request, f'Client "{name}" created successfully!')
+        return redirect('client_list')
+    
+    return redirect('client_list')
+
+
+@login_required
+def client_edit(request, pk):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('dashboard')
+    
+    client = get_object_or_404(Client, pk=pk)
+    
+    if request.method == 'POST':
+        client.name = request.POST.get('name', client.name)
+        client.subdomain = request.POST.get('subdomain', client.subdomain)
+        client.subscription_status = request.POST.get('subscription_status', client.subscription_status)
+        client.is_active = request.POST.get('is_active') == 'on'
+        trial_days = int(request.POST.get('trial_days', 15))
+        
+        if client.subscription_status == 'trial':
+            client.trial_end_date = timezone.now().date() + timedelta(days=trial_days)
+        elif client.subscription_status == 'active':
+            client.trial_end_date = None
+        else:
+            client.trial_end_date = client.trial_end_date
+        
+        client.notes = request.POST.get('notes', client.notes)
+        client.save()
+        
+        messages.success(request, f'Client "{client.name}" updated successfully!')
+        return redirect('client_list')
+    
+    return render(request, 'client_edit.html', {'c': client})

@@ -43,6 +43,11 @@ urlpatterns = [
     path('credit/<int:pk>/add-payment/', views.credit_add_payment, name='credit_add_payment'),
     path('credit/<int:pk>/delete/', views.credit_delete, name='credit_delete'),
 
+    # Client Management (Superuser only)
+    path('clients/', views.client_list, name='client_list'),
+    path('clients/add/', views.client_add, name='client_add'),
+    path('clients/<int:pk>/edit/', views.client_edit, name='client_edit'),
+
     # API
     path('api/products/', views.api_products, name='api_products'),
 ]

@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Client - TindaTrack{% endblock %}
+
+{% block content %}
+<div class="p-8 max-w-2xl">
+    <div class="mb-6">
+        <a href="{% url 'client_list' %}" class="text-primary-light hover:underline">&larr; Back to Clients</a>
+    </div>
+
+    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+        <h1 class="text-2xl font-bold text-text-primary mb-6">{{ c.name }}</h1>
+
+        <form method="POST">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1">Store Name</label>
+                        <input type="text" name="name" value="{{ c.name }}" required
+                            class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1">Subdomain</label>
+                        <input type="text" name="subdomain" value="{{ c.subdomain }}" required
+                            class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1">Subscription Status</label>
+                        <select name="subscription_status"
+                            class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                            <option value="trial" {% if c.subscription_status == 'trial' %}selected{% endif %}>Trial</option>
+                            <option value="active" {% if c.subscription_status == 'active' %}selected{% endif %}>Active</option>
+                            <option value="expired" {% if c.subscription_status == 'expired' %}selected{% endif %}>Expired</option>
+                            <option value="locked" {% if c.subscription_status == 'locked' %}selected{% endif %}>Locked</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1">Trial Days (if trial)</label>
+                        <input type="number" name="trial_days" value="15"
+                            class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="is_active" id="isActive" {% if c.is_active %}checked{% endif %}
+                        class="w-4 h-4 text-primary-light bg-bg-main border-bg-hover rounded">
+                    <label for="isActive" class="text-sm text-text-primary">Account Active</label>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-text-secondary mb-1">Notes</label>
+                    <textarea name="notes" rows="3"
+                        class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">{{ c.notes }}</textarea>
+                </div>
+
+                <div class="bg-bg-main rounded-lg p-4">
+                    <h4 class="text-sm font-medium text-text-secondary mb-2">Client Info</h4>
+                    <p class="text-sm text-text-primary">Created: {{ c.created_at|date:"M d, Y g:i A" }}</p>
+                    <p class="text-sm text-text-primary">Trial Ends: {{ c.trial_end_date|default:"N/A" }}</p>
+                    <p class="text-sm text-text-primary">Subscription Valid: 
+                        <span class="{% if c.is_subscription_valid %}text-success{% else %}text-danger{% endif %}">
+                            {{ c.is_subscription_valid|yesno:"Yes,No" }}
+                        </span>
+                    </p>
+                    <p class="text-sm text-text-primary">Users: {{ c.profiles.count }}</p>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-4 mt-6">
+                <a href="{% url 'client_list' %}"
+                    class="px-4 py-2 border border-bg-hover rounded-lg hover:bg-bg-hover text-text-primary">Cancel</a>
+                <button type="submit"
+                    class="px-4 py-2 bg-primary-light text-white rounded-lg hover:opacity-90">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

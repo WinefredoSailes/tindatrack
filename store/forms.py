@@ -88,6 +88,12 @@ class ProductForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-blue-600'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        client = kwargs.pop('client', None)
+        super().__init__(*args, **kwargs)
+        if client:
+            self.fields['category'].queryset = Category.objects.filter(client=client, is_active=True)
+
 
 class PurchaseForm(forms.ModelForm):
     class Meta:
@@ -101,6 +107,12 @@ class PurchaseForm(forms.ModelForm):
             'purchase_date': forms.DateInput(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500', 'type': 'date'}),
             'expiry_date': forms.DateInput(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500', 'type': 'date'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        client = kwargs.pop('client', None)
+        super().__init__(*args, **kwargs)
+        if client:
+            self.fields['product'].queryset = Product.objects.filter(client=client, is_active=True)
 
 
 class SaleForm(forms.Form):
