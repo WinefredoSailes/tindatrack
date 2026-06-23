@@ -927,7 +927,22 @@ def client_edit(request, pk):
         client.notes = request.POST.get('notes', client.notes)
         client.save()
         
+        # Update owner username/password if provided
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        
+        if username and password:
+            owner_profile = client.profiles.filter(role='owner').first()
+            if owner_profile:
+                owner_profile.user.username = username
+                owner_profile.user.set_password(password)
+                owner_profile.user.save()
+        
         messages.success(request, f'Client "{client.name}" updated successfully!')
         return redirect('client_list')
     
-    return render(request, 'client_edit.html', {'c': client})
+    owner_profile = client.profiles.filter(role='owner').first()
+    return render(request, 'client_edit.html', {
+        'c': client,
+        'owner_username': owner_profile.user.username if owner_profile else ''
+    })
