@@ -70,6 +70,11 @@ def login_view(request):
                     if not client.is_subscription_valid and not user.is_superuser:
                         messages.error(request, 'Your subscription has expired. Contact support to renew.')
                         return render(request, 'login.html', {'form': LoginForm()})
+                    # Show warning 3 days before trial expiry
+                    if not user.is_superuser and client.subscription_status == 'trial' and client.trial_end_date:
+                        days_left = (client.trial_end_date - timezone.now().date()).days
+                        if 0 < days_left <= 3:
+                            messages.warning(request, f'Your trial ends in {days_left} day{"s" if days_left > 1 else ""}. Please contact support to renew.')
                 login(request, user)
                 return redirect('dashboard')
             else:

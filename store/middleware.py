@@ -1,5 +1,7 @@
 from django.shortcuts import redirect
 from django.contrib import messages
+from django.utils import timezone
+from datetime import timedelta
 
 
 class TenantMiddleware:
@@ -24,8 +26,16 @@ class SubscriptionMiddleware:
             allowed_paths = ['/logout/', '/login/', '/clients/']
             is_allowed = any(request.path.startswith(p) for p in allowed_paths)
 
-            if not is_allowed and not request.client.is_subscription_valid:
-                messages.error(request, 'Your trial has expired. Contact support to renew your subscription.')
+            # Block expired subscriptions
+            if not is_allowed and not request.client.is_subscription_valid and not request.user.is_superuser:
+                messages.error(request, 'Your subscription has expired. Contact support to renew.')
                 return redirect('logout')
+
+            # Show warning 3 days before trial expiry
+            if not is_allowed and not request.user.is_superuser:
+                if request.client.subscription_status == 'trial' and request.client.trial_end_date:
+                    days_left = (request.client.trial_end_date - timezone.now().date()).days
+                    if 0 < days_left <= 3:
+                        messages.warning(request, f'Your trial ends in {days_left} day{"s" if days_left > 1 else ""}. Please contact support to renew.')
 
         return self.get_response(request)

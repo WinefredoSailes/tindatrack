@@ -419,7 +419,10 @@
             {% if messages %}
             <div class="p-4">
                 {% for message in messages %}
-                <div class="p-4 mb-2 rounded-lg {% if message.tags == 'error' %}bg-danger text-white{% else %}bg-success text-white{% endif %}">
+                <div class="p-4 mb-2 rounded-lg 
+                    {% if message.tags == 'error' %}bg-danger text-white
+                    {% elif message.tags == 'warning' %}bg-warning text-black
+                    {% else %}bg-success text-white{% endif %}">
                     {{ message }}
                 </div>
                 {% endfor %}

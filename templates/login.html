@@ -12,7 +12,9 @@
         {% if messages %}
         <div class="mb-4">
             {% for message in messages %}
-            <div class="p-3 rounded-lg bg-danger-bg text-danger text-sm border border-danger">
+            <div class="p-3 rounded-lg text-sm border
+                {% if message.tags == 'warning' %}bg-warning bg-opacity-20 text-warning border-warning
+                {% else %}bg-danger-bg text-danger border-danger{% endif %}">
                 {{ message }}
             </div>
             {% endfor %}
