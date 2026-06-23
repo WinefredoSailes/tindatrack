@@ -11,7 +11,7 @@ from django.utils import timezone
 from datetime import timedelta
 import json
 
-from .models import Client, Category, Product, StockBatch, Sale, SaleItem, Purchase, UserProfile, CreditRecord, CreditItem, CreditPayment
+from .models import Client, ClientLog, ClientPayment, Category, Product, StockBatch, Sale, SaleItem, Purchase, UserProfile, CreditRecord, CreditItem, CreditPayment
 from .forms import (
     LoginForm, UserCreationForm, UserEditForm,
     CategoryForm, ProductForm, PurchaseForm, SaleForm
@@ -70,11 +70,16 @@ def login_view(request):
                     if not client.is_subscription_valid and not user.is_superuser:
                         messages.error(request, 'Your subscription has expired. Contact support to renew.')
                         return render(request, 'login.html', {'form': LoginForm()})
-                    # Show warning 3 days before trial expiry
-                    if not user.is_superuser and client.subscription_status == 'trial' and client.trial_end_date:
-                        days_left = (client.trial_end_date - timezone.now().date()).days
-                        if 0 < days_left <= 3:
-                            messages.warning(request, f'Your trial ends in {days_left} day{"s" if days_left > 1 else ""}. Please contact support to renew.')
+                    # Show warning 3 days before trial or payment expiry
+                    if not user.is_superuser:
+                        if client.subscription_status == 'trial' and client.trial_end_date:
+                            days_left = (client.trial_end_date - timezone.now().date()).days
+                            if 0 < days_left <= 3:
+                                messages.warning(request, f'Your trial ends in {days_left} day{"s" if days_left > 1 else ""}. Please contact support to renew.')
+                        elif client.subscription_status != 'active' and client.paid_until_date:
+                            days_left = (client.paid_until_date - timezone.now().date()).days
+                            if 0 < days_left <= 3:
+                                messages.warning(request, f'Your subscription ends in {days_left} day{"s" if days_left > 1 else ""}. Please contact support to renew.')
                 login(request, user)
                 return redirect('dashboard')
             else:
@@ -138,6 +143,17 @@ def dashboard(request):
             'days_left': days_left
         })
 
+    # Client expiry notifications (for superuser)
+    expiring_clients = []
+    expired_clients = []
+    if request.user.is_superuser:
+        today = timezone.now().date()
+        for c in Client.objects.filter(is_active=True):
+            if c.status_display == 'expired':
+                expired_clients.append(c)
+            elif c.status_display == 'expiring':
+                expiring_clients.append(c)
+
     context = {
         'total_sales': total_sales,
         'transaction_count': transaction_count,
@@ -147,6 +163,8 @@ def dashboard(request):
         'near_expiry_items': near_expiry_items[:5],
         'total_outstanding': total_outstanding,
         'today_credit_received': today_credit_received,
+        'expiring_clients': expiring_clients,
+        'expired_clients': expired_clients,
     }
     return render(request, 'dashboard.html', context)
 
@@ -862,7 +880,11 @@ def client_list(request):
         return redirect('dashboard')
     
     clients = Client.objects.all()
-    return render(request, 'clients.html', {'clients': clients})
+    today = timezone.now().date()
+    return render(request, 'clients.html', {
+        'clients': clients,
+        'today': today,
+    })
 
 
 @login_required
@@ -893,6 +915,13 @@ def client_add(request):
             notes=request.POST.get('notes', ''),
         )
         
+        ClientLog.objects.create(
+            client=client,
+            action='Client created',
+            details=f'Subscription: {subscription_status}',
+            changed_by=request.user,
+        )
+        
         # Create owner user for the client
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
@@ -908,6 +937,26 @@ def client_add(request):
 
 
 @login_required
+def client_detail(request, pk):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('dashboard')
+    
+    client = get_object_or_404(Client, pk=pk)
+    payments = ClientPayment.objects.filter(client=client)
+    logs = ClientLog.objects.filter(client=client)[:50]
+    owner_profile = client.profiles.filter(role='owner').first()
+    
+    return render(request, 'client_detail.html', {
+        'c': client,
+        'payments': payments,
+        'logs': logs,
+        'owner_username': owner_profile.user.username if owner_profile else '',
+        'today': timezone.now().date(),
+    })
+
+
+@login_required
 def client_edit(request, pk):
     if not request.user.is_superuser:
         messages.error(request, "Access denied.")
@@ -916,11 +965,19 @@ def client_edit(request, pk):
     client = get_object_or_404(Client, pk=pk)
     
     if request.method == 'POST':
+        old_status = client.subscription_status
+        old_rate = client.monthly_rate
+        
         client.name = request.POST.get('name', client.name)
         client.subdomain = request.POST.get('subdomain', client.subdomain)
         client.subscription_status = request.POST.get('subscription_status', client.subscription_status)
         client.is_active = request.POST.get('is_active') == 'on'
+        client.monthly_rate = request.POST.get('monthly_rate', client.monthly_rate)
         trial_days = int(request.POST.get('trial_days', 15))
+        
+        paid_until = request.POST.get('paid_until', '').strip()
+        if paid_until:
+            client.paid_until_date = paid_until
         
         if client.subscription_status == 'trial':
             client.trial_end_date = timezone.now().date() + timedelta(days=trial_days)
@@ -930,7 +987,21 @@ def client_edit(request, pk):
             client.trial_end_date = client.trial_end_date
         
         client.notes = request.POST.get('notes', client.notes)
+        
+        # Build change log details
+        changes = []
+        if old_status != client.subscription_status:
+            changes.append(f'Status: {old_status} → {client.subscription_status}')
+        
         client.save()
+        
+        if changes:
+            ClientLog.objects.create(
+                client=client,
+                action='Client updated',
+                details='; '.join(changes),
+                changed_by=request.user,
+            )
         
         # Update owner username/password if provided
         username = request.POST.get('username', '').strip()
@@ -950,4 +1021,86 @@ def client_edit(request, pk):
     return render(request, 'client_edit.html', {
         'c': client,
         'owner_username': owner_profile.user.username if owner_profile else ''
+    })
+
+
+@login_required
+def record_payment(request, pk):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('dashboard')
+    
+    client = get_object_or_404(Client, pk=pk)
+    
+    if request.method == 'POST':
+        amount = request.POST.get('amount')
+        payment_method = request.POST.get('payment_method')
+        reference = request.POST.get('reference', '')
+        paid_until = request.POST.get('paid_until')
+        notes = request.POST.get('notes', '')
+        
+        if not amount or not paid_until:
+            messages.error(request, 'Amount and Paid Until date are required.')
+            return redirect('client_detail', pk=client.pk)
+
+        payment = ClientPayment.objects.create(
+            client=client,
+            amount=amount,
+            payment_method=payment_method,
+            reference=reference,
+            paid_until=paid_until,
+            notes=notes,
+            recorded_by=request.user,
+        )
+
+        if client.paid_until_date is None or payment.paid_until > client.paid_until_date:
+            client.paid_until_date = payment.paid_until
+
+        if client.subscription_status not in ('active', 'locked'):
+            client.subscription_status = 'expired'
+
+        client.save()
+
+        ClientLog.objects.create(
+            client=client,
+            action=f'Payment recorded: ₱{amount} via {payment_method}',
+            details=f'Covered until {paid_until}. Ref: {reference}',
+            changed_by=request.user,
+        )
+
+        messages.success(request, f'Payment of ₱{amount} recorded for {client.name}!')
+        return redirect('client_detail', pk=client.pk)
+
+    return redirect('client_detail', pk=client.pk)
+
+
+@login_required
+def admin_dashboard(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('dashboard')
+
+    today = timezone.now().date()
+    clients = Client.objects.all()
+
+    total = clients.count()
+    active = sum(1 for c in clients if c.status_display == 'active')
+    expiring = sum(1 for c in clients if c.status_display == 'expiring')
+    expired_count = sum(1 for c in clients if c.status_display == 'expired')
+
+    recent_payments = ClientPayment.objects.select_related('client', 'recorded_by')[:20]
+    recent_logs = ClientLog.objects.select_related('client', 'changed_by')[:20]
+
+    monthly_revenue = sum(p.amount for p in ClientPayment.objects.filter(created_at__month=today.month, created_at__year=today.year))
+
+    return render(request, 'admin_dashboard.html', {
+        'total_clients': total,
+        'active_clients': active,
+        'expiring_clients': expiring,
+        'expired_clients': expired_count,
+        'clients': clients,
+        'recent_payments': recent_payments,
+        'recent_logs': recent_logs,
+        'monthly_revenue': monthly_revenue,
+        'today': today,
     })

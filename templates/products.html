@@ -3,9 +3,9 @@
 {% block title %}Products - TindaTrack{% endblock %}
 
 {% block content %}
-<div class="p-8">
+<div class="p-4 md:p-6 lg:p-8">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 class="text-2xl font-bold text-text-primary">Products</h1>
         {% if user.profile.is_owner %}
         <a href="{% url 'add_product' %}" class="bg-primary-light text-white px-4 py-2 rounded-lg font-medium hover:bg-primary">
@@ -25,8 +25,8 @@
     </div>
 
     <!-- Filters -->
-    <div class="flex gap-4 mb-6">
-        <form method="GET" class="flex gap-4 flex-1">
+    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+        <form method="GET" class="flex flex-col sm:flex-row gap-4 flex-1">
             {% if status_filter %}
             <input type="hidden" name="status" value="{{ status_filter }}">
             {% endif %}
@@ -50,8 +50,8 @@
     </div>
 
     <!-- Products Table -->
-    <div class="bg-bg-card rounded-xl shadow-lg overflow-hidden border border-bg-hover">
-        <table class="w-full">
+    <div class="bg-bg-card rounded-xl shadow-lg border border-bg-hover overflow-x-auto">
+        <table class="w-full min-w-[600px]">
             <thead class="bg-bg-main">
                 <tr class="text-left text-sm text-text-secondary">
                     <th class="px-6 py-3">Name</th>

@@ -3,11 +3,11 @@
 {% block title %}Reports - TindaTrack{% endblock %}
 
 {% block content %}
-<div class="p-8">
+<div class="p-4 md:p-6 lg:p-8">
     <h1 class="text-2xl font-bold text-text-primary mb-6">Reports</h1>
 
     <!-- Tabs -->
-    <div class="flex gap-2 mb-6">
+    <div class="flex flex-wrap gap-2 mb-6">
         <a href="?type=daily" class="px-4 py-2 rounded-lg {% if report_type == 'daily' %}bg-primary-light text-text-primary{% else %}bg-bg-card text-text-secondary border border-bg-hover{% endif %}">
             Daily
         </a>
@@ -30,7 +30,7 @@
     <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-lg font-semibold text-text-primary">Daily Sales Summary</h2>
-            <form method="GET" class="flex gap-2">
+            <form method="GET" class="flex flex-wrap gap-2">
                 <input type="hidden" name="type" value="daily">
                 <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}"
                     class="px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
@@ -58,7 +58,8 @@
         </div>
 
         <h3 class="font-semibold text-text-primary mb-4">Today's Transactions</h3>
-        <table class="w-full">
+        <div class="overflow-x-auto">
+        <table class="w-full min-w-[500px]">
             <thead class="bg-bg-main">
                 <tr class="text-left text-sm text-text-secondary">
                     <th class="px-4 py-2">Time</th>
@@ -83,7 +84,7 @@
                 </tr>
                 {% endfor %}
             </tbody>
-        </table>
+        </table></div>
     </div>
     {% endif %}
 
@@ -92,7 +93,7 @@
     <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-lg font-semibold text-text-primary">Monthly Sales Overview</h2>
-            <form method="GET" class="flex gap-2">
+            <form method="GET" class="flex flex-wrap gap-2">
                 <input type="hidden" name="type" value="monthly">
                 <input type="month" name="month" value="{{ start_date|date:'Y-m' }}"
                     class="px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
@@ -116,7 +117,8 @@
         </div>
 
         <h3 class="font-semibold text-text-primary mb-4">Top Products</h3>
-        <table class="w-full">
+        <div class="overflow-x-auto">
+        <table class="w-full min-w-[500px]">
             <thead class="bg-bg-main">
                 <tr class="text-left text-sm text-text-secondary">
                     <th class="px-4 py-2">Product</th>
@@ -137,7 +139,7 @@
                 </tr>
                 {% endfor %}
             </tbody>
-        </table>
+        </table></div>
     </div>
     {% endif %}
 
@@ -146,7 +148,8 @@
     <div class="grid grid-cols-2 gap-6">
         <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
             <h2 class="text-lg font-semibold text-text-primary mb-4">Low Stock Items</h2>
-            <table class="w-full">
+            <div class="overflow-x-auto">
+            <table class="w-full min-w-[500px]">
                 <thead class="bg-bg-main">
                     <tr class="text-left text-sm text-text-secondary">
                         <th class="px-4 py-2">Product</th>
@@ -169,10 +172,12 @@
                 </tbody>
             </table>
         </div>
+        </div>
 
         <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
             <h2 class="text-lg font-semibold text-text-primary mb-4">Near Expiry Items</h2>
-            <table class="w-full">
+            <div class="overflow-x-auto">
+            <table class="w-full min-w-[500px]">
                 <thead class="bg-bg-main">
                     <tr class="text-left text-sm text-text-secondary">
                         <th class="px-4 py-2">Product</th>
@@ -193,7 +198,7 @@
                     </tr>
                     {% endfor %}
                 </tbody>
-            </table>
+            </table></div>
         </div>
     </div>
     {% endif %}
@@ -208,7 +213,8 @@
             <!-- Fast Moving -->
             <div>
                 <h3 class="font-semibold text-success mb-4">🔥 Fast Moving (Top 20)</h3>
-                <table class="w-full">
+                <div class="overflow-x-auto">
+                <table class="w-full min-w-[500px]">
                     <thead class="bg-bg-main">
                         <tr class="text-left text-sm text-text-secondary">
                             <th class="px-3 py-2">#</th>
@@ -229,13 +235,14 @@
                         </tr>
                         {% endfor %}
                     </tbody>
-                </table>
+                </table></div>
             </div>
 
             <!-- Slow Moving -->
             <div>
                 <h3 class="font-semibold text-danger mb-4">🐢 Slow Moving (Bottom 10)</h3>
-                <table class="w-full">
+                <div class="overflow-x-auto">
+                <table class="w-full min-w-[500px]">
                     <thead class="bg-bg-main">
                         <tr class="text-left text-sm text-text-secondary">
                             <th class="px-3 py-2">#</th>
@@ -256,7 +263,7 @@
                         </tr>
                         {% endfor %}
                     </tbody>
-                </table>
+                </table></div>
             </div>
         </div>
     </div>
@@ -282,7 +289,7 @@
 
         <h3 class="font-semibold text-text-primary mb-4">All Credit Records</h3>
         <div class="overflow-x-auto">
-            <table class="w-full">
+            <table class="w-full min-w-[500px]">
                 <thead>
                     <tr class="border-b border-bg-hover">
                         <th class="px-4 py-2 text-left text-text-secondary">Customer</th>

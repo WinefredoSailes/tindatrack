@@ -3,8 +3,8 @@
 {% block title %}Categories - TindaTrack{% endblock %}
 
 {% block content %}
-<div class="p-8">
-    <div class="flex justify-between items-center mb-6">
+<div class="p-4 md:p-6 lg:p-8">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 class="text-2xl font-bold text-text-primary">Categories</h1>
         <a href="{% url 'add_category' %}" class="bg-primary-light text-white px-4 py-2 rounded-lg font-medium hover:bg-primary">
             + Add Category
@@ -12,7 +12,8 @@
     </div>
 
     <div class="bg-bg-card rounded-xl shadow-lg overflow-hidden border border-bg-hover">
-        <table class="w-full">
+        <div class="overflow-x-auto">
+        <table class="w-full min-w-[400px]">
             <thead class="bg-bg-main">
                 <tr class="text-left text-sm text-text-secondary">
                     <th class="px-6 py-3">Name</th>
@@ -43,7 +44,7 @@
                 </tr>
                 {% endfor %}
             </tbody>
-        </table>
+        </table></div>
     </div>
 </div>
 {% endblock %}

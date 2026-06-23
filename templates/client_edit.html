@@ -3,18 +3,19 @@
 {% block title %}Edit Client - TindaTrack{% endblock %}
 
 {% block content %}
-<div class="p-8 max-w-2xl">
-    <div class="mb-6">
+<div class="p-4 md:p-6 lg:p-8 max-w-2xl">
+    <div class="mb-6 flex justify-between">
         <a href="{% url 'client_list' %}" class="text-primary-light hover:underline">&larr; Back to Clients</a>
+        <a href="{% url 'client_detail' c.id %}" class="text-primary-light hover:underline">View Payments & Activity &rarr;</a>
     </div>
 
-    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+    <div class="bg-bg-card rounded-xl shadow-lg p-4 md:p-6 border border-bg-hover">
         <h1 class="text-2xl font-bold text-text-primary mb-6">{{ c.name }}</h1>
 
         <form method="POST">
             {% csrf_token %}
             <div class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-text-secondary mb-1">Store Name</label>
                         <input type="text" name="name" value="{{ c.name }}" required
@@ -27,7 +28,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-text-secondary mb-1">Subscription Status</label>
                         <select name="subscription_status"
@@ -45,9 +46,22 @@
                     </div>
                 </div>
 
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1">Monthly Rate (₱)</label>
+                        <input type="number" name="monthly_rate" value="{{ c.monthly_rate }}" step="0.01"
+                            class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1">Paid Until</label>
+                        <input type="date" name="paid_until" value="{{ c.paid_until_date|date:'Y-m-d' }}"
+                            class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                    </div>
+                </div>
+
                 <div class="border-t border-bg-hover pt-4">
                     <h4 class="text-sm font-medium text-text-secondary mb-3">Owner Credentials</h4>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-text-secondary mb-1">Owner Username</label>
                             <input type="text" name="username" value="{{ owner_username }}" placeholder="Leave blank to keep current"

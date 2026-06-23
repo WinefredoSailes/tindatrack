@@ -3,9 +3,9 @@
 {% block title %}POS / New Sale - TindaTrack{% endblock %}
 
 {% block content %}
-<div class="p-6 h-screen flex gap-6">
+<div class="p-4 md:p-6 lg:p-8 min-h-screen lg:h-screen grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
     <!-- Products Section -->
-    <div class="flex-1 flex flex-col">
+    <div class="lg:col-span-2 xl:col-span-3 flex flex-col">
         <!-- Search -->
         <div class="mb-4">
             <form method="GET" id="searchForm" class="flex gap-4">
@@ -26,7 +26,7 @@
         <!-- Product Grid -->
         <div class="flex-1 bg-bg-card rounded-xl shadow-lg p-4 overflow-y-auto border border-bg-hover">
             <h2 class="text-lg font-semibold text-text-primary mb-4">Products</h2>
-            <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2" id="productGrid">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2" id="productGrid">
                 {% for product in products %}
                 <button type="button" onclick="addToCart({{ product.id }}, '{{ product.name }}', {{ product.selling_price }}, {{ product.current_stock }})"
                     class="p-2 border border-bg-hover rounded-lg hover:border-primary-light hover:bg-bg-hover transition text-left
@@ -39,14 +39,14 @@
                     </p>
                 </button>
                 {% empty %}
-                <p class="col-span-4 text-center text-text-secondary py-8">No products found</p>
+                <p class="col-span-full text-center text-text-secondary py-8">No products found</p>
                 {% endfor %}
             </div>
         </div>
     </div>
 
     <!-- Cart Section -->
-    <div class="w-96 bg-bg-card rounded-xl shadow-lg flex flex-col border border-bg-hover">
+    <div class="bg-bg-card rounded-xl shadow-lg flex flex-col border border-bg-hover">
         <div class="p-4 border-b border-bg-hover">
             <h2 class="text-lg font-semibold text-text-primary">Cart</h2>
         </div>
@@ -172,7 +172,7 @@
             html += `
                 <div class="flex justify-between items-center py-1 border-b border-bg-hover">
                     <div class="flex-1">
-                        <p class="text-sm font-medium text-text-primary truncate">${item.name}</p>
+                        <p class="text-sm font-medium text-text-primary break-words truncate">${item.name}</p>
                         <p class="text-xs text-text-secondary">₱${item.price} each</p>
                     </div>
                     <div class="flex items-center gap-1">

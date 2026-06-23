@@ -3,7 +3,7 @@
 {% block title %}Clients - TindaTrack{% endblock %}
 
 {% block content %}
-<div class="p-8">
+<div class="p-4 md:p-6 lg:p-8">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-text-primary">Client Management</h1>
         <button onclick="document.getElementById('addModal').classList.remove('hidden')"
@@ -12,14 +12,15 @@
         </button>
     </div>
 
-    <div class="bg-bg-card rounded-xl shadow-lg border border-bg-hover overflow-hidden">
-        <table class="w-full">
+    <div class="bg-bg-card rounded-xl shadow-lg border border-bg-hover overflow-x-auto">
+        <table class="w-full min-w-[600px]">
             <thead class="bg-bg-main">
                 <tr class="text-left text-sm text-text-secondary">
                     <th class="px-4 py-3">Name</th>
                     <th class="px-4 py-3">Subdomain</th>
                     <th class="px-4 py-3">Status</th>
                     <th class="px-4 py-3">Trial End</th>
+                    <th class="px-4 py-3">Paid Until</th>
                     <th class="px-4 py-3">Created</th>
                     <th class="px-4 py-3">Active</th>
                     <th class="px-4 py-3">Action</th>
@@ -28,31 +29,41 @@
             <tbody class="divide-y divide-bg-hover">
                 {% for c in clients %}
                 <tr class="hover:bg-bg-hover">
-                    <td class="px-4 py-3 text-text-primary font-medium">{{ c.name }}</td>
-                    <td class="px-4 py-3 text-text-secondary">{{ c.subdomain }}</td>
-                    <td class="px-4 py-3">
-                        <span class="px-2 py-1 rounded text-xs font-medium 
-                            {% if c.subscription_status == 'active' %}bg-success text-white
-                            {% elif c.subscription_status == 'trial' %}bg-warning text-black
-                            {% elif c.subscription_status == 'expired' %}bg-danger text-white
-                            {% else %}bg-bg-hover text-text-secondary{% endif %}">
-                            {{ c.get_subscription_status_display }}
-                        </span>
-                    </td>
-                    <td class="px-4 py-3 text-text-secondary">{{ c.trial_end_date|default:"-" }}</td>
-                    <td class="px-4 py-3 text-text-secondary">{{ c.created_at|date:"M d, Y" }}</td>
-                    <td class="px-4 py-3">
-                        <span class="px-2 py-1 rounded text-xs {% if c.is_active %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
-                            {{ c.is_active|yesno:"Yes,No" }}
-                        </span>
-                    </td>
-                    <td class="px-4 py-3">
-                        <a href="{% url 'client_edit' c.id %}" class="text-primary-light hover:underline text-sm">Edit</a>
-                    </td>
+<td class="px-4 py-3 text-text-primary font-medium">
+                            <a href="{% url 'client_detail' c.id %}" class="hover:text-primary-light">{{ c.name }}</a>
+                        </td>
+                        <td class="px-4 py-3 text-text-secondary">{{ c.subdomain }}</td>
+                        <td class="px-4 py-3">
+                            {% if c.status_display == 'expired' %}
+                            <span class="px-2 py-1 rounded text-xs font-medium bg-danger text-white">
+                                🔴 Expired
+                            </span>
+                            {% elif c.status_display == 'expiring' %}
+                            <span class="px-2 py-1 rounded text-xs font-medium bg-warning text-black">
+                                🟡 {{ c.days_until_expiry }} day{{ c.days_until_expiry|pluralize }} left
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-1 rounded text-xs font-medium bg-success text-white">
+                                🟢 Active
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-text-secondary">{{ c.trial_end_date|default:"-" }}</td>
+                        <td class="px-4 py-3 text-text-secondary">{{ c.paid_until_date|default:"-" }}</td>
+                        <td class="px-4 py-3 text-text-secondary">{{ c.created_at|date:"M d, Y" }}</td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-1 rounded text-xs {% if c.is_active %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
+                                {{ c.is_active|yesno:"Yes,No" }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 flex gap-2">
+                            <a href="{% url 'client_detail' c.id %}" class="text-primary-light hover:underline text-sm">View</a>
+                            <a href="{% url 'client_edit' c.id %}" class="text-primary-light hover:underline text-sm">Edit</a>
+                        </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="px-4 py-8 text-center text-text-secondary">No clients found</td>
+                    <td colspan="8" class="px-4 py-8 text-center text-text-secondary">No clients found</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -62,7 +73,7 @@
 
 <!-- Add Client Modal -->
 <div id="addModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50">
-    <div class="bg-bg-card rounded-lg shadow-xl p-6 max-w-md w-full mx-4 border border-bg-hover">
+    <div class="bg-bg-card rounded-lg shadow-xl p-4 md:p-6 max-w-md w-full mx-4 border border-bg-hover">
         <h3 class="text-lg font-semibold text-text-primary mb-4">Add New Client</h3>
         <form method="POST" action="{% url 'client_add' %}">
             {% csrf_token %}

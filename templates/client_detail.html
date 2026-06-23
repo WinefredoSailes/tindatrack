@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ c.name }} - TindaTrack{% endblock %}
+
+{% block content %}
+<div class="p-4 md:p-6 lg:p-8">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-text-primary">{{ c.name }}</h1>
+            <p class="text-text-secondary">{{ c.subdomain }} · {{ c.get_subscription_status_display }}</p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{% url 'client_list' %}" class="px-4 py-2 border border-bg-hover rounded-lg text-text-primary hover:bg-bg-hover">Back</a>
+            <a href="{% url 'client_edit' c.id %}" class="px-4 py-2 bg-bg-hover text-white rounded-lg hover:opacity-90">Edit Client</a>
+        </div>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-bg-card rounded-xl shadow-lg p-4 border border-bg-hover">
+            <p class="text-xs text-text-secondary mb-1">Status</p>
+            {% if c.status_display == 'expired' %}
+            <p class="text-xl font-bold text-danger">🔴 Expired</p>
+            {% elif c.status_display == 'expiring' %}
+            <p class="text-xl font-bold text-warning">🟡 {{ c.days_until_expiry }} day{{ c.days_until_expiry|pluralize }} left</p>
+            {% else %}
+            <p class="text-xl font-bold text-success">🟢 Active</p>
+            {% endif %}
+        </div>
+        <div class="bg-bg-card rounded-xl shadow-lg p-4 border border-bg-hover">
+            <p class="text-xs text-text-secondary mb-1">Trial Ends</p>
+            <p class="text-xl font-bold text-text-primary">{{ c.trial_end_date|default:"—" }}</p>
+        </div>
+        <div class="bg-bg-card rounded-xl shadow-lg p-4 border border-bg-hover">
+            <p class="text-xs text-text-secondary mb-1">Paid Until</p>
+            <p class="text-xl font-bold text-text-primary">{{ c.paid_until_date|default:"—" }}</p>
+        </div>
+        <div class="bg-bg-card rounded-xl shadow-lg p-4 border border-bg-hover">
+            <p class="text-xs text-text-secondary mb-1">Monthly Rate</p>
+            <p class="text-xl font-bold text-primary-light">₱{{ c.monthly_rate|floatformat:2 }}</p>
+        </div>
+    </div>
+
+    <!-- Quick Info -->
+    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover mb-8">
+        <h2 class="text-lg font-semibold text-text-primary mb-4">Client Info</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+                <p class="text-text-secondary">Created</p>
+                <p class="text-text-primary">{{ c.created_at|date:"M d, Y g:i A" }}</p>
+            </div>
+            <div>
+                <p class="text-text-secondary">Trial Ends</p>
+                <p class="text-text-primary">{{ c.trial_end_date|default:"N/A" }}</p>
+            </div>
+            <div>
+                <p class="text-text-secondary">Subscription Valid</p>
+                <p class="{% if c.is_subscription_valid %}text-success{% else %}text-danger{% endif %}">
+                    {{ c.is_subscription_valid|yesno:"Yes,No" }}
+                </p>
+            </div>
+            <div>
+                <p class="text-text-secondary">Users</p>
+                <p class="text-text-primary">{{ c.profiles.count }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment History + Record Payment -->
+    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover mb-8">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-text-primary">Payment History</h2>
+            <button onclick="document.getElementById('paymentModal').classList.remove('hidden')"
+                class="px-4 py-2 bg-success text-white rounded-lg text-sm hover:opacity-90">
+                + Record Payment
+            </button>
+        </div>
+        {% if payments %}
+        <div class="overflow-x-auto">
+        <table class="w-full min-w-[500px]">
+            <thead>
+                <tr class="text-left text-sm text-text-secondary border-b border-bg-hover">
+                    <th class="pb-2">Date</th>
+                    <th class="pb-2">Amount</th>
+                    <th class="pb-2">Method</th>
+                    <th class="pb-2">Reference</th>
+                    <th class="pb-2">Covered Until</th>
+                    <th class="pb-2">Recorded By</th>
+                    <th class="pb-2">Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payments %}
+                <tr class="border-b border-bg-hover text-sm">
+                    <td class="py-2 text-text-primary">{{ p.created_at|date:"M d, Y" }}</td>
+                    <td class="py-2 text-success font-medium">₱{{ p.amount|floatformat:2 }}</td>
+                    <td class="py-2 text-text-secondary">{{ p.get_payment_method_display }}</td>
+                    <td class="py-2 text-text-secondary">{{ p.reference|default:"—" }}</td>
+                    <td class="py-2 text-text-primary">{{ p.paid_until }}</td>
+                    <td class="py-2 text-text-secondary">{{ p.recorded_by.get_full_name|default:p.recorded_by.username }}</td>
+                    <td class="py-2 text-text-secondary">{{ p.notes|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="text-text-secondary text-sm">No payments recorded yet</p>
+        {% endif %}
+    </div>
+
+    <!-- Activity Log -->
+    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+        <h2 class="text-lg font-semibold text-text-primary mb-4">Activity Log</h2>
+        {% if logs %}
+        <div class="space-y-3">
+            {% for log in logs %}
+            <div class="flex items-start gap-3 pb-3 border-b border-bg-hover text-sm">
+                <div class="w-32 text-text-secondary shrink-0">{{ log.created_at|date:"M d, Y H:i" }}</div>
+                <div>
+                    <span class="text-text-primary font-medium">{{ log.action }}</span>
+                    {% if log.details %}
+                    <span class="text-text-secondary">— {{ log.details }}</span>
+                    {% endif %}
+                    <span class="text-text-secondary text-xs block">by {{ log.changed_by.get_full_name|default:log.changed_by.username }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-text-secondary text-sm">No activity recorded yet</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Record Payment Modal -->
+<div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center z-50">
+    <div class="bg-bg-card rounded-lg shadow-xl p-4 md:p-6 max-w-md w-full mx-4 border border-bg-hover">
+        <h3 class="text-lg font-semibold text-text-primary mb-4">Record Payment — {{ c.name }}</h3>
+        <form method="POST" action="{% url 'record_payment' c.id %}">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-text-secondary mb-1">Amount (₱)</label>
+                    <input type="number" name="amount" step="0.01" required
+                        class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-text-secondary mb-1">Payment Method</label>
+                    <select name="payment_method" class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                        <option value="gcash">GCash</option>
+                        <option value="bank">Bank Transfer</option>
+                        <option value="cash">Cash</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-text-secondary mb-1">Reference No.</label>
+                    <input type="text" name="reference" placeholder="GCash ref, bank ref, etc."
+                        class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-text-secondary mb-1">Covered Until Date</label>
+                    <input type="date" name="paid_until" required
+                        class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-text-secondary mb-1">Notes</label>
+                    <textarea name="notes" rows="2" placeholder="e.g. Payment for July-October 2026"
+                        class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-4 mt-6">
+                <button type="button" onclick="document.getElementById('paymentModal').classList.add('hidden')"
+                    class="px-4 py-2 border border-bg-hover rounded-lg hover:bg-bg-hover text-text-primary">Cancel</button>
+                <button type="submit"
+                    class="px-4 py-2 bg-success text-white rounded-lg hover:opacity-90">Record Payment</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

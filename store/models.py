@@ -15,7 +15,9 @@ class Client(models.Model):
     subdomain = models.CharField(max_length=100, unique=True)
     is_active = models.BooleanField(default=True)
     trial_end_date = models.DateField(null=True, blank=True)
+    paid_until_date = models.DateField(null=True, blank=True)
     subscription_status = models.CharField(max_length=20, choices=SUBSCRIPTION_CHOICES, default='trial')
+    monthly_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -32,7 +34,65 @@ class Client(models.Model):
             return True
         if self.subscription_status == 'trial' and self.trial_end_date:
             return self.trial_end_date >= timezone.now().date()
+        if self.subscription_status == 'expired' and self.paid_until_date:
+            return self.paid_until_date >= timezone.now().date()
         return False
+
+    @property
+    def days_until_expiry(self):
+        today = timezone.now().date()
+        if self.subscription_status == 'active':
+            return 999
+        if self.subscription_status == 'trial' and self.trial_end_date:
+            return (self.trial_end_date - today).days
+        if self.subscription_status == 'expired' and self.paid_until_date:
+            return (self.paid_until_date - today).days
+        return 0
+
+    @property
+    def status_display(self):
+        if self.days_until_expiry <= 0:
+            return 'expired'
+        if self.days_until_expiry <= 7:
+            return 'expiring'
+        return 'active'
+
+
+class ClientPayment(models.Model):
+    PAYMENT_METHODS = [
+        ('gcash', 'GCash'),
+        ('bank', 'Bank Transfer'),
+        ('cash', 'Cash'),
+        ('other', 'Other'),
+    ]
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='payments')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS)
+    reference = models.CharField(max_length=200, blank=True, help_text='GCash ref no., bank ref, etc.')
+    paid_until = models.DateField(help_text='Covered until this date')
+    notes = models.TextField(blank=True)
+    recorded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.client.name} - ₱{self.amount} ({self.payment_method})'
+
+
+class ClientLog(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='logs')
+    action = models.CharField(max_length=200)
+    details = models.TextField(blank=True)
+    changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.client.name} - {self.action}'
 
 
 class UserProfile(models.Model):

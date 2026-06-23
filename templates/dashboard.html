@@ -3,7 +3,35 @@
 {% block title %}Dashboard - TindaTrack{% endblock %}
 
 {% block content %}
-<div class="p-8">
+<div class="p-4 md:p-6 lg:p-8">
+    <!-- Superuser Notifications -->
+    {% if user.is_superuser %}
+    {% if expired_clients or expiring_clients %}
+    <div class="mb-8 space-y-2">
+        {% for c in expired_clients %}
+        <div class="flex items-center gap-3 bg-danger bg-opacity-10 border border-danger rounded-lg px-4 py-3">
+            <span class="text-lg">🔴</span>
+            <div class="flex-1">
+                <span class="font-medium text-text-primary">{{ c.name }}</span>
+                <span class="text-text-secondary text-sm ml-2">— Expired! Needs attention.</span>
+            </div>
+            <a href="{% url 'client_detail' c.id %}" class="text-primary-light hover:underline text-sm">View</a>
+        </div>
+        {% endfor %}
+        {% for c in expiring_clients %}
+        <div class="flex items-center gap-3 bg-warning bg-opacity-10 border border-warning rounded-lg px-4 py-3">
+            <span class="text-lg">🟡</span>
+            <div class="flex-1">
+                <span class="font-medium text-text-primary">{{ c.name }}</span>
+                <span class="text-text-secondary text-sm ml-2">— Expiring in {{ c.days_until_expiry }} day{{ c.days_until_expiry|pluralize }}.</span>
+            </div>
+            <a href="{% url 'client_detail' c.id %}" class="text-primary-light hover:underline text-sm">View</a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endif %}
+
     <!-- Header -->
     <div class="flex justify-between items-center mb-8">
         <div>
@@ -41,7 +69,7 @@
     </div>
 
     <!-- Quick Actions -->
-    <div class="flex gap-4 mb-8">
+    <div class="flex flex-wrap gap-4 mb-8">
         <a href="{% url 'pos' %}" class="bg-primary-light text-white px-6 py-3 rounded-lg font-medium hover:bg-primary transition">
             + New Sale
         </a>
@@ -61,7 +89,8 @@
         <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
             <h2 class="text-lg font-semibold text-text-primary mb-4">Low Stock Items</h2>
             {% if low_stock_products %}
-            <table class="w-full">
+            <div class="overflow-x-auto">
+            <table class="w-full min-w-[400px]">
                 <thead>
                     <tr class="text-left text-sm text-text-secondary border-b border-bg-hover">
                         <th class="pb-2">Product</th>
@@ -79,6 +108,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
             {% else %}
             <p class="text-text-secondary text-sm">No low stock items</p>
             {% endif %}
@@ -88,7 +118,8 @@
         <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
             <h2 class="text-lg font-semibold text-text-primary mb-4">Near Expiry Items</h2>
             {% if near_expiry_items %}
-            <table class="w-full">
+            <div class="overflow-x-auto">
+            <table class="w-full min-w-[400px]">
                 <thead>
                     <tr class="text-left text-sm text-text-secondary border-b border-bg-hover">
                         <th class="pb-2">Product</th>
@@ -106,6 +137,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
             {% else %}
             <p class="text-text-secondary text-sm">No near expiry items</p>
             {% endif %}
