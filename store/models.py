@@ -218,6 +218,7 @@ class Purchase(models.Model):
         # Create stock batch when purchase is created
         if self.pk:
             StockBatch.objects.get_or_create(
+                client=self.client,
                 product=self.product,
                 quantity=self.quantity,
                 remaining_quantity=self.quantity,
