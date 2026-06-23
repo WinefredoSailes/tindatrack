@@ -6,20 +6,29 @@
 <div class="p-4 md:p-6 lg:p-8 min-h-screen lg:h-screen grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
     <!-- Products Section -->
     <div class="lg:col-span-2 xl:col-span-3 flex flex-col">
-        <!-- Search -->
+        <!-- Search & Filter -->
         <div class="mb-4">
-            <form method="GET" id="searchForm" class="flex gap-4">
-                <input type="text" name="search" value="{{ search }}" placeholder="Search products..."
-                    class="flex-1 px-4 py-3 bg-bg-card border border-bg-hover rounded-lg text-lg text-text-primary placeholder-text-disabled"
-                    id="productSearch">
-                <button type="submit" class="bg-bg-hover text-text-primary px-4 py-2 rounded-lg hover:bg-bg-card">
-                    Search
-                </button>
-                {% if search %}
-                <a href="{% url 'pos' %}" class="px-4 py-2 border border-bg-hover rounded-lg hover:bg-bg-hover text-text-secondary">
-                    Clear
-                </a>
-                {% endif %}
+            <form method="GET" id="searchForm">
+                <div class="flex gap-2 mb-2">
+                    <input type="text" name="search" value="{{ search }}" placeholder="Search products..."
+                        class="flex-1 px-4 py-3 bg-bg-card border border-bg-hover rounded-lg text-lg text-text-primary placeholder-text-disabled"
+                        id="productSearch">
+                    <button type="submit" class="bg-bg-hover text-text-primary px-4 py-2 rounded-lg hover:bg-bg-card">
+                        Search
+                    </button>
+                    {% if search %}
+                    <a href="{% url 'pos' %}" class="px-4 py-2 border border-bg-hover rounded-lg hover:bg-bg-hover text-text-secondary">
+                        Clear
+                    </a>
+                    {% endif %}
+                </div>
+                <select name="category" onchange="this.form.submit()"
+                    class="w-full px-4 py-2 bg-bg-card border border-bg-hover rounded-lg text-text-primary">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if category_id|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
             </form>
         </div>
 
@@ -42,6 +51,34 @@
                 <p class="col-span-full text-center text-text-secondary py-8">No products found</p>
                 {% endfor %}
             </div>
+            <!-- Pagination -->
+            {% if page_obj.paginator.num_pages > 1 %}
+            <div class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm">
+                <span class="text-text-secondary">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ page_obj.paginator.count }} products)
+                </span>
+                <div class="flex gap-1 flex-wrap justify-center">
+                    {% if page_obj.has_previous %}
+                    <a href="?page=1{% if search %}&search={{ search }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}"
+                        class="px-3 py-1.5 border border-bg-hover rounded-lg hover:bg-bg-hover text-text-primary text-sm">&laquo;</a>
+                    <a href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}"
+                        class="px-3 py-1.5 border border-bg-hover rounded-lg hover:bg-bg-hover text-text-primary text-sm">&lsaquo;</a>
+                    {% endif %}
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+                        <a href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}"
+                            class="px-3 py-1.5 border rounded-lg text-sm {% if num == page_obj.number %}bg-primary-light text-white border-primary-light{% else %}border-bg-hover hover:bg-bg-hover text-text-primary{% endif %}">{{ num }}</a>
+                        {% endif %}
+                    {% endfor %}
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}"
+                        class="px-3 py-1.5 border border-bg-hover rounded-lg hover:bg-bg-hover text-text-primary text-sm">&rsaquo;</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if category_id %}&category={{ category_id }}{% endif %}"
+                        class="px-3 py-1.5 border border-bg-hover rounded-lg hover:bg-bg-hover text-text-primary text-sm">&raquo;</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -74,7 +111,7 @@
                 <div class="flex justify-between items-center pt-2 border-t border-bg-hover">
                     <span class="text-sm font-medium text-text-secondary">Change:</span>
                     <span id="changeAmount" class="text-xl font-bold text-primary-light">₱0.00</span>
-                </div>
+            </div>
             </div>
 
             <div class="mb-4">

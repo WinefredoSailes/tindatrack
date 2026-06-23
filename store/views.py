@@ -3,6 +3,7 @@ from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.db.models import Sum, Count, Q, F
 from decimal import Decimal
 from django.http import JsonResponse
@@ -182,20 +183,28 @@ def products(request):
 
     # Filter by active status
     if status_filter == 'inactive':
-        products = Product.objects.filter(client=client, is_active=False).select_related('category')
+        products_qs = Product.objects.filter(client=client, is_active=False).select_related('category')
     else:
-        products = Product.objects.filter(client=client, is_active=True).select_related('category')
+        products_qs = Product.objects.filter(client=client, is_active=True).select_related('category')
 
     if search:
-        products = products.filter(Q(name__icontains=search) | Q(sku__icontains=search))
+        products_qs = products_qs.filter(Q(name__icontains=search) | Q(sku__icontains=search))
 
     if category_filter:
-        products = products.filter(category_id=category_filter)
+        products_qs = products_qs.filter(category_id=category_filter)
 
+    # Stock filters convert to list (can't paginate queryset after)
     if stock_filter == 'low':
-        products = [p for p in products if p.is_low_stock]
+        products = [p for p in products_qs if p.is_low_stock]
+        page_obj = None
     elif stock_filter == 'out':
-        products = [p for p in products if p.current_stock == 0]
+        products = [p for p in products_qs if p.current_stock == 0]
+        page_obj = None
+    else:
+        paginator = Paginator(products_qs, 30)
+        page_number = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
+        products = page_obj
 
     categories = Category.objects.filter(client=client, is_active=True)
 
@@ -206,6 +215,7 @@ def products(request):
         'category_filter': category_filter,
         'stock_filter': stock_filter,
         'status_filter': status_filter,
+        'page_obj': page_obj,
     }
     return render(request, 'products.html', context)
 
@@ -328,14 +338,26 @@ def edit_category(request, pk):
 def pos(request):
     client = get_client(request)
     search = request.GET.get('search', '')
+    category_id = request.GET.get('category', '')
+
     products = Product.objects.filter(client=client, is_active=True).select_related('category')
+    categories = Category.objects.filter(client=client, is_active=True)
 
     if search:
         products = products.filter(Q(name__icontains=search) | Q(sku__icontains=search))
+    if category_id and category_id.isdigit():
+        products = products.filter(category_id=category_id)
+
+    paginator = Paginator(products, 30)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
 
     context = {
-        'products': products[:20],
+        'products': page_obj,
         'search': search,
+        'category_id': int(category_id) if category_id and category_id.isdigit() else '',
+        'categories': categories,
+        'page_obj': page_obj,
     }
     return render(request, 'pos.html', context)
 
