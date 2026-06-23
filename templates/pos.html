@@ -8,8 +8,8 @@
     <div class="lg:col-span-2 xl:col-span-3 flex flex-col">
         <!-- Search & Filter -->
         <div class="mb-4">
-            <form method="GET" id="searchForm">
-                <div class="flex gap-2 mb-2">
+            <form method="GET" id="searchForm" class="flex flex-col sm:flex-row gap-2">
+                <div class="flex-1 flex gap-2">
                     <input type="text" name="search" value="{{ search }}" placeholder="Search products..."
                         class="flex-1 px-4 py-3 bg-bg-card border border-bg-hover rounded-lg text-lg text-text-primary placeholder-text-disabled"
                         id="productSearch">
@@ -23,7 +23,7 @@
                     {% endif %}
                 </div>
                 <select name="category" onchange="this.form.submit()"
-                    class="w-full px-4 py-2 bg-bg-card border border-bg-hover rounded-lg text-text-primary">
+                    class="sm:w-48 px-4 py-3 bg-bg-card border border-bg-hover rounded-lg text-text-primary">
                     <option value="">All Categories</option>
                     {% for cat in categories %}
                     <option value="{{ cat.id }}" {% if category_id|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>

@@ -348,7 +348,7 @@ def pos(request):
     if category_id and category_id.isdigit():
         products = products.filter(category_id=category_id)
 
-    paginator = Paginator(products, 30)
+    paginator = Paginator(products, 25)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
