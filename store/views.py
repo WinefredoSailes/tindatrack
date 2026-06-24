@@ -889,8 +889,12 @@ def credit_delete(request, pk):
 @login_required
 def api_products(request):
     client = get_client(request)
-    products = Product.objects.filter(client=client, is_active=True).values('id', 'name', 'sku', 'selling_price', 'current_stock')
-    return JsonResponse(list(products), safe=False)
+    products = Product.objects.filter(client=client, is_active=True)
+    data = [{
+        'id': p.id, 'name': p.name, 'sku': p.sku,
+        'selling_price': str(p.selling_price), 'current_stock': p.current_stock,
+    } for p in products]
+    return JsonResponse(data, safe=False)
 
 
 # ==================== CLIENT MANAGEMENT (Superuser only) ====================

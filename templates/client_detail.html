@@ -79,7 +79,7 @@
         <div class="overflow-x-auto">
         <table class="w-full min-w-[500px]">
             <thead>
-                <tr class="text-left text-sm text-text-secondary border-b border-bg-hover">
+                <tr class="text-left text-xs text-text-secondary border-b border-bg-hover">
                     <th class="pb-2">Date</th>
                     <th class="pb-2">Amount</th>
                     <th class="pb-2">Method</th>
@@ -91,7 +91,7 @@
             </thead>
             <tbody>
                 {% for p in payments %}
-                <tr class="border-b border-bg-hover text-sm">
+                <tr class="border-b border-bg-hover text-xs">
                     <td class="py-2 text-text-primary">{{ p.created_at|date:"M d, Y" }}</td>
                     <td class="py-2 text-success font-medium">₱{{ p.amount|floatformat:2 }}</td>
                     <td class="py-2 text-text-secondary">{{ p.get_payment_method_display }}</td>
