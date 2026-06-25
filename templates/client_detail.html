@@ -66,6 +66,29 @@
         </div>
     </div>
 
+    <!-- Next Due / Amount Due -->
+    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover mb-8">
+        <h2 class="text-lg font-semibold text-text-primary mb-4">Billing Info</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+                <p class="text-text-secondary">Monthly Rate</p>
+                <p class="text-text-primary font-medium">₱{{ c.monthly_rate|floatformat:2 }}</p>
+            </div>
+            <div>
+                <p class="text-text-secondary">Paid Until</p>
+                <p class="text-text-primary font-medium">{{ c.paid_until_date|default:"—" }}</p>
+            </div>
+            <div>
+                <p class="text-text-secondary">Next Due Date</p>
+                <p class="text-warning font-medium">{{ next_due_date|default:"—" }}</p>
+            </div>
+            <div>
+                <p class="text-text-secondary">Amount Due</p>
+                <p class="text-primary-light font-medium">₱{{ amount_due|floatformat:2 }}</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Payment History + Record Payment -->
     <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover mb-8">
         <div class="flex justify-between items-center mb-4">
@@ -81,6 +104,7 @@
             <thead>
                 <tr class="text-left text-xs text-text-secondary border-b border-bg-hover">
                     <th class="pb-2">Date</th>
+                    <th class="pb-2">Plan</th>
                     <th class="pb-2">Amount</th>
                     <th class="pb-2">Method</th>
                     <th class="pb-2">Reference</th>
@@ -93,6 +117,7 @@
                 {% for p in payments %}
                 <tr class="border-b border-bg-hover text-xs">
                     <td class="py-2 text-text-primary">{{ p.created_at|date:"M d, Y" }}</td>
+                    <td class="py-2 text-text-secondary">{{ p.plan.name|default:"—" }}</td>
                     <td class="py-2 text-success font-medium">₱{{ p.amount|floatformat:2 }}</td>
                     <td class="py-2 text-text-secondary">{{ p.get_payment_method_display }}</td>
                     <td class="py-2 text-text-secondary">{{ p.reference|default:"—" }}</td>
@@ -141,8 +166,21 @@
             {% csrf_token %}
             <div class="space-y-4">
                 <div>
+                    <label class="block text-sm font-medium text-text-secondary mb-1">Plan</label>
+                    <select name="plan_id" id="planSelect" onchange="onPlanChange()"
+                        class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                        <option value="">-- Select plan (optional) --</option>
+                        {% for plan in plans %}
+                        <option value="{{ plan.id }}" data-days="{{ plan.duration_days }}" data-price="{{ plan.price }}">
+                            {{ plan.name }} — ₱{{ plan.price|floatformat:2 }} ({{ plan.duration_days }} days)
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-xs text-text-secondary mt-1">Select a plan to auto-fill amount and covered-until date</p>
+                </div>
+                <div>
                     <label class="block text-sm font-medium text-text-secondary mb-1">Amount (₱)</label>
-                    <input type="number" name="amount" step="0.01" required
+                    <input type="number" name="amount" id="amountInput" step="0.01" required
                         class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
                 </div>
                 <div>
@@ -161,8 +199,9 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-text-secondary mb-1">Covered Until Date</label>
-                    <input type="date" name="paid_until" required
+                    <input type="date" name="paid_until" id="paidUntilInput"
                         class="w-full px-4 py-2 bg-bg-main border border-bg-hover rounded-lg text-text-primary">
+                    <p class="text-xs text-text-secondary mt-1">Auto-filled when you select a plan, or set manually</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-text-secondary mb-1">Notes</label>
@@ -179,4 +218,20 @@
         </form>
     </div>
 </div>
+
+<script>
+function onPlanChange() {
+    const select = document.getElementById('planSelect');
+    const option = select.options[select.selectedIndex];
+    if (option && option.value) {
+        const days = parseInt(option.dataset.days);
+        const price = option.dataset.price;
+        document.getElementById('amountInput').value = price;
+        const today = new Date();
+        const until = new Date(today);
+        until.setDate(until.getDate() + days);
+        document.getElementById('paidUntilInput').value = until.toISOString().split('T')[0];
+    }
+}
+</script>
 {% endblock %}

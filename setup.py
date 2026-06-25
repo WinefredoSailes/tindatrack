@@ -5,7 +5,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tindatrack.settings')
 django.setup()
 
 from django.contrib.auth.models import User
-from store.models import UserProfile, Client, Category, Product, StockBatch, Sale, SaleItem, Purchase, CreditRecord, CreditItem, CreditPayment
+from store.models import UserProfile, Client, Category, Product, StockBatch, Sale, SaleItem, Purchase, CreditRecord, CreditItem, CreditPayment, SubscriptionPlan
 
 # Create default client if not exists
 default_client, created = Client.objects.get_or_create(
@@ -49,6 +49,18 @@ else:
             profile.client = default_client
             profile.save()
     print('Admin user already exists')
+
+# Seed subscription plans
+monthly, created = SubscriptionPlan.objects.get_or_create(
+    name='Monthly', defaults={'price': 299, 'duration_days': 30}
+)
+if created:
+    print('Created Monthly plan (299/30d)')
+annual, created = SubscriptionPlan.objects.get_or_create(
+    name='Annual', defaults={'price': 2999, 'duration_days': 365}
+)
+if created:
+    print('Created Annual plan (2999/365d)')
 
 # Create default categories if none exist
 if not Category.objects.filter(client=default_client).exists():

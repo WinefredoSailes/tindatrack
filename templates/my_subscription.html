@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}My Subscription - TindaTrack{% endblock %}
+
+{% block content %}
+<div class="p-4 md:p-6 lg:p-8">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-text-primary">My Subscription</h1>
+        <p class="text-text-secondary">Manage your subscription and view payment history</p>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-bg-card rounded-xl shadow-lg p-4 border border-bg-hover">
+            <p class="text-xs text-text-secondary mb-1">Status</p>
+            {% if c.status_display == 'expired' %}
+            <p class="text-xl font-bold text-danger">Expired</p>
+            {% elif c.status_display == 'expiring' %}
+            <p class="text-xl font-bold text-warning">{{ c.days_until_expiry }} day{{ c.days_until_expiry|pluralize }} left</p>
+            {% else %}
+            <p class="text-xl font-bold text-success">Active</p>
+            {% endif %}
+        </div>
+        <div class="bg-bg-card rounded-xl shadow-lg p-4 border border-bg-hover">
+            <p class="text-xs text-text-secondary mb-1">Monthly Rate</p>
+            <p class="text-xl font-bold text-primary-light">P{{ c.monthly_rate|floatformat:2 }}</p>
+        </div>
+        <div class="bg-bg-card rounded-xl shadow-lg p-4 border border-bg-hover">
+            <p class="text-xs text-text-secondary mb-1">Paid Until</p>
+            <p class="text-xl font-bold text-text-primary">{{ c.paid_until_date|default:"—" }}</p>
+        </div>
+        <div class="bg-bg-card rounded-xl shadow-lg p-4 border border-bg-hover">
+            <p class="text-xs text-text-secondary mb-1">Next Due</p>
+            <p class="text-xl font-bold text-warning">{{ next_due_date|default:"—" }}</p>
+        </div>
+    </div>
+
+    <!-- Payment Instructions -->
+    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover mb-8">
+        <h2 class="text-lg font-semibold text-text-primary mb-4">How to Pay</h2>
+        <div class="text-sm text-text-secondary space-y-2">
+            <p>Send your payment to the following GCash account:</p>
+            <div class="bg-bg-main rounded-lg p-4 mt-2">
+                <p class="text-text-primary"><strong>GCash:</strong> 0917-XXX-XXXX</p>
+                <p class="text-text-primary"><strong>Name:</strong> TindaTrack Admin</p>
+                <p class="text-text-primary"><strong>Amount:</strong> P{{ amount_due|floatformat:2 }}</p>
+            </div>
+            <p class="mt-2">After sending payment, contact your admin to confirm and update your subscription.</p>
+        </div>
+    </div>
+
+    <!-- Payment History -->
+    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover">
+        <h2 class="text-lg font-semibold text-text-primary mb-4">Payment History</h2>
+        {% if payments %}
+        <div class="overflow-x-auto">
+        <table class="w-full min-w-[500px]">
+            <thead>
+                <tr class="text-left text-xs text-text-secondary border-b border-bg-hover">
+                    <th class="pb-2">Date</th>
+                    <th class="pb-2">Plan</th>
+                    <th class="pb-2">Amount</th>
+                    <th class="pb-2">Method</th>
+                    <th class="pb-2">Covered Until</th>
+                    <th class="pb-2">Reference</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payments %}
+                <tr class="border-b border-bg-hover text-xs">
+                    <td class="py-2 text-text-primary">{{ p.created_at|date:"M d, Y" }}</td>
+                    <td class="py-2 text-text-secondary">{{ p.plan.name|default:"—" }}</td>
+                    <td class="py-2 text-success font-medium">P{{ p.amount|floatformat:2 }}</td>
+                    <td class="py-2 text-text-secondary">{{ p.get_payment_method_display }}</td>
+                    <td class="py-2 text-text-primary">{{ p.paid_until }}</td>
+                    <td class="py-2 text-text-secondary">{{ p.reference|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="text-text-secondary text-sm">No payments recorded yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

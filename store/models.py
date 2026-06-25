@@ -58,6 +58,20 @@ class Client(models.Model):
         return 'active'
 
 
+class SubscriptionPlan(models.Model):
+    name = models.CharField(max_length=100)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    duration_days = models.IntegerField(help_text='Number of days this plan covers')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['price']
+
+    def __str__(self):
+        return f'{self.name} (₱{self.price}/{self.duration_days}d)'
+
+
 class ClientPayment(models.Model):
     PAYMENT_METHODS = [
         ('gcash', 'GCash'),
@@ -66,6 +80,7 @@ class ClientPayment(models.Model):
         ('other', 'Other'),
     ]
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='payments')
+    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.SET_NULL, null=True, blank=True, help_text='Which plan this payment covers')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS)
     reference = models.CharField(max_length=200, blank=True, help_text='GCash ref no., bank ref, etc.')

@@ -12,7 +12,7 @@ from django.utils import timezone
 from datetime import timedelta
 import json
 
-from .models import Client, ClientLog, ClientPayment, Category, Product, StockBatch, Sale, SaleItem, Purchase, UserProfile, CreditRecord, CreditItem, CreditPayment
+from .models import Client, ClientLog, ClientPayment, SubscriptionPlan, Category, Product, StockBatch, Sale, SaleItem, Purchase, UserProfile, CreditRecord, CreditItem, CreditPayment
 from .forms import (
     LoginForm, UserCreationForm, UserEditForm,
     CategoryForm, ProductForm, PurchaseForm, SaleForm
@@ -969,16 +969,25 @@ def client_detail(request, pk):
         return redirect('dashboard')
     
     client = get_object_or_404(Client, pk=pk)
-    payments = ClientPayment.objects.filter(client=client)
+    payments = ClientPayment.objects.filter(client=client).select_related('plan', 'recorded_by')
     logs = ClientLog.objects.filter(client=client)[:50]
     owner_profile = client.profiles.filter(role='owner').first()
+    plans = SubscriptionPlan.objects.filter(is_active=True)
+    
+    # Compute next due date and amount
+    today = timezone.now().date()
+    next_due_date = client.paid_until_date if client.paid_until_date and client.paid_until_date >= today else today
+    amount_due = client.monthly_rate
     
     return render(request, 'client_detail.html', {
         'c': client,
         'payments': payments,
         'logs': logs,
         'owner_username': owner_profile.user.username if owner_profile else '',
-        'today': timezone.now().date(),
+        'today': today,
+        'plans': plans,
+        'next_due_date': next_due_date,
+        'amount_due': amount_due,
     })
 
 
@@ -1063,7 +1072,15 @@ def record_payment(request, pk):
         payment_method = request.POST.get('payment_method')
         reference = request.POST.get('reference', '')
         paid_until = request.POST.get('paid_until')
+        plan_id = request.POST.get('plan_id', '')
         notes = request.POST.get('notes', '')
+        
+        # Auto-compute paid_until if plan selected and no manual date
+        plan = None
+        if plan_id and plan_id.isdigit():
+            plan = get_object_or_404(SubscriptionPlan, pk=plan_id)
+            if not paid_until:
+                paid_until = (timezone.now().date() + timedelta(days=plan.duration_days)).isoformat()
         
         if not amount or not paid_until:
             messages.error(request, 'Amount and Paid Until date are required.')
@@ -1071,6 +1088,7 @@ def record_payment(request, pk):
 
         payment = ClientPayment.objects.create(
             client=client,
+            plan=plan,
             amount=amount,
             payment_method=payment_method,
             reference=reference,
@@ -1098,6 +1116,23 @@ def record_payment(request, pk):
         return redirect('client_detail', pk=client.pk)
 
     return redirect('client_detail', pk=client.pk)
+
+
+@login_required
+def my_subscription(request):
+    client = get_client(request)
+    today = timezone.now().date()
+    payments = ClientPayment.objects.filter(client=client).select_related('plan', 'recorded_by')
+    next_due_date = client.paid_until_date if client.paid_until_date and client.paid_until_date >= today else today
+    amount_due = client.monthly_rate
+    
+    return render(request, 'my_subscription.html', {
+        'c': client,
+        'payments': payments,
+        'today': today,
+        'next_due_date': next_due_date,
+        'amount_due': amount_due,
+    })
 
 
 @login_required

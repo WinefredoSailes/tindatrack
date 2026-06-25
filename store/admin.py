@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Product, StockBatch, Sale, SaleItem, Purchase, UserProfile
+from .models import Category, Product, StockBatch, Sale, SaleItem, Purchase, UserProfile, SubscriptionPlan, ClientPayment
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
@@ -40,3 +40,14 @@ class PurchaseAdmin(admin.ModelAdmin):
     list_display = ['product', 'quantity', 'unit_cost', 'purchase_date', 'supplier_name']
     list_filter = ['purchase_date']
     search_fields = ['product__name', 'supplier_name']
+
+@admin.register(SubscriptionPlan)
+class SubscriptionPlanAdmin(admin.ModelAdmin):
+    list_display = ['name', 'price', 'duration_days', 'is_active']
+    list_filter = ['is_active']
+
+@admin.register(ClientPayment)
+class ClientPaymentAdmin(admin.ModelAdmin):
+    list_display = ['client', 'plan', 'amount', 'payment_method', 'paid_until', 'created_at']
+    list_filter = ['payment_method', 'created_at']
+    search_fields = ['client__name', 'reference']

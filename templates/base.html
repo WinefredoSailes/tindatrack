@@ -369,6 +369,16 @@
                         <span class="nav-text">Credit</span>
                     </span>
                 </a>
+                {% if not user.is_superuser %}
+                <a href="{% url 'my_subscription' %}" class="block px-4 py-2.5 mx-2 rounded-lg hover:bg-bg-hover {% if '/my-subscription' in request.path %}bg-primary-light text-white{% endif %}">
+                    <span class="flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        <span class="nav-text">Subscription</span>
+                    </span>
+                </a>
+                {% endif %}
 
                 {% if user.profile.is_owner %}
                 <a href="{% url 'categories' %}" class="block px-4 py-2.5 mx-2 rounded-lg hover:bg-bg-hover {% if '/categories' in request.path %}bg-primary-light text-white{% endif %}">
@@ -488,6 +498,28 @@
                 </div>
                 {% endfor %}
             </div>
+            {% endif %}
+
+            {% if user.is_authenticated and not user.is_superuser %}
+                {% if request.client.status_display == 'expired' %}
+                <div class="mx-4 mt-4 flex items-center gap-3 bg-danger bg-opacity-10 border border-danger rounded-lg px-4 py-3">
+                    <span class="text-lg">⛔</span>
+                    <div class="flex-1">
+                        <span class="font-medium text-text-primary">Your subscription has expired.</span>
+                        <span class="text-text-secondary text-sm ml-2">Please contact your admin to renew.</span>
+                    </div>
+                    <a href="{% url 'my_subscription' %}" class="text-primary-light hover:underline text-sm shrink-0">View Subscription</a>
+                </div>
+                {% elif request.client.status_display == 'expiring' %}
+                <div class="mx-4 mt-4 flex items-center gap-3 bg-warning bg-opacity-10 border border-warning rounded-lg px-4 py-3">
+                    <span class="text-lg">⚠</span>
+                    <div class="flex-1">
+                        <span class="font-medium text-text-primary">Your subscription expires in {{ request.client.days_until_expiry }} day{{ request.client.days_until_expiry|pluralize }}.</span>
+                        <span class="text-text-secondary text-sm ml-2">Contact your admin to renew on time.</span>
+                    </div>
+                    <a href="{% url 'my_subscription' %}" class="text-primary-light hover:underline text-sm shrink-0">View Subscription</a>
+                </div>
+                {% endif %}
             {% endif %}
 
             {% block content %}{% endblock %}

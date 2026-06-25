@@ -51,6 +51,9 @@ urlpatterns = [
     path('clients/<int:pk>/edit/', views.client_edit, name='client_edit'),
     path('clients/<int:pk>/payment/', views.record_payment, name='record_payment'),
 
+    # My Subscription (client-facing)
+    path('my-subscription/', views.my_subscription, name='my_subscription'),
+
     # API
     path('api/products/', views.api_products, name='api_products'),
 ]
