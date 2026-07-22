@@ -1,6 +1,7 @@
 # TindaTrack - Sari-Sari Store POS & Inventory System
 
-A simple inventory management and point-of-sale system for sari-sari stores.
+A web-based POS, inventory, and subscription management system for sari-sari stores.
+Built with Django, currently deployed for 1 client (semi-complete / single-tenant deployment).
 
 ## Requirements
 
@@ -43,36 +44,76 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-#### 5. Setup Database
+#### 5. Setup Database & Seed Data
 ```
 python manage.py migrate
+python setup.py
 ```
 
-#### 6. Create Admin Account
-```
-python manage.py createsuperuser
-```
-Follow the prompts to create your admin username and password.
-
-#### 7. Run the App
+#### 6. Run the App
 ```
 python manage.py runserver
 ```
 
 Then open your browser and go to: http://127.0.0.1:8000
 
-## Using the App
-
-1. Login with your admin account
-2. First time: Add categories first, then products
-3. Add stock via "Stock In" menu
-4. Use "POS / Sale" for making sales
-5. View reports under "Reports"
+## Default Login
+- **Superuser:** Username: `admin`, Password: `admin123`
+- **Owner:** Username: `owner`, Password: `owner123` (if created)
+- **Teller:** Username: `teller`, Password: `teller123` (if created)
 
 ## User Roles
 
-- **Owner** - Full access to all features
-- **Teller** - Can only view products and make sales
+- **Superuser** — Full access including admin portal, client management, and subscription billing
+- **Owner** — Full store access: Dashboard, POS, Products, Categories, Stock In, Reports, Users, Credit
+- **Teller** — Limited access: Dashboard, POS, Products, Credit only
+
+## Features
+
+### Point of Sale
+- Product grid with search, category filter, and pagination (25/page)
+- Cash and Credit (utang) payment support
+- Auto-deduct stock on sale
+
+### Inventory Management
+- Products with categories, SKU, pricing, reorder levels
+- Stock batches with expiry tracking
+- Low stock and near-expiry alerts on dashboard
+
+### Credit / Utang Tracking
+- Record credit sales per customer
+- Track payments and remaining balance
+- Status: unpaid / partial / paid
+
+### Reports
+- Daily sales, top products, low stock, near expiry
+- Fast moving / slow moving items
+- Credit summary
+
+### Subscription Billing (Admin)
+- **Plans:** Monthly (P299/30d) and Annual (P2,999/365d)
+- Record payments with plan selector (auto-fills amount + covered-until date)
+- Client detail with billing info (next due, amount due, payment history)
+- **Flexible billing:** Any amount, any covered-until date — no restrictions
+
+### Client-Side Subscription
+- `/my-subscription/` page: view plan, rate, paid until, next due, payment history
+- Warning banners on every page when expiring or expired
+- GCash payment instructions displayed
+
+### Subscription States
+- **Trial** — Countdown based on `trial_end_date`
+- **Active** — Unlimited validity
+- **Expired** — Checks `paid_until_date` (can be extended via payment)
+- **Locked** — Manually locked by admin
+
+### Theme
+- 10 themes: Dark (Blue, Purple, Red, Green) and Light (Blue, Pink, Purple, Green, Red, Orange)
+
+## Multi-Tenant Architecture
+
+The system is built with multi-tenant support (single database, client FK on all models).
+Currently deployed for **1 client** (Default Store). Adding more clients is supported via the admin portal.
 
 ## To Transfer to Another Computer
 
@@ -89,22 +130,10 @@ Then open your browser and go to: http://127.0.0.1:8000
    - Run `venv\Scripts\activate`
    - Run `pip install -r requirements.txt`
    - Run `python manage.py migrate`
-   - Run `python manage.py createsuperuser`
+   - Run `python setup.py`
    - Run `python manage.py runserver`
 
 **Important:** Delete `db.sqlite3` if copying to a new computer to start fresh, or keep it to preserve all data.
-
-## Default Login (after createsuperuser)
-- Username: (what you created)
-- Password: (what you created)
-
-## Theme
-
-Click the "Theme" button in the sidebar to switch between:
-- Dark themes (Blue, Purple, Red, Green)
-- Light themes (Blue, Pink, Purple, Green, Red, Orange)
-
-The theme preference is saved automatically.
 
 ## Troubleshooting
 
@@ -148,6 +177,7 @@ This folder includes convenient shortcuts to run the app:
 ├── run_app.bat           - Quick launcher (auto-setup)
 ├── Start TindaTrack.vbs  - Quick launcher (hidden)
 ├── launcher.vbs          - Alternative launcher (hidden)
+├── setup.py              - Database seeder (plans, categories, admin)
 ├── tindatrack/            - Django project settings
 ├── store/                - Main application code
 ├── templates/            - HTML templates
@@ -157,7 +187,7 @@ This folder includes convenient shortcuts to run the app:
 ## Quick Start
 1. Double-click `run_app.bat`
 2. Open browser to http://127.0.0.1:8000
-3. Login with your admin account
+3. Login with admin / admin123
 4. See **USER_GUIDE.md** for detailed instructions
 
 ## Engineered by
