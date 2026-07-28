@@ -6,6 +6,12 @@ from pathlib import Path
 import os
 import dj_database_url
 
+# Load .env file if it exists (for local development)
+env_path = Path(__file__).resolve().parent.parent / '.env'
+if env_path.exists():
+    import dotenv
+    dotenv.load_dotenv(env_path)
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-change-in-production')
@@ -101,6 +107,7 @@ SESSION_COOKIE_AGE = 86400  # 24 hours
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
 # PayMongo (get keys at https://dashboard.paymongo.com)
-PAYMONGO_SECRET_KEY = ''  # Base64-encoded sk_test_xxx or sk_live_xxx
-PAYMONGO_WEBHOOK_SECRET = ''  # From PayMongo webhook settings
-PAYMONGO_PUBLIC_KEY = ''  # pk_test_xxx or pk_live_xxx
+# Set these as environment variables in Render dashboard or .env file for local dev
+PAYMONGO_SECRET_KEY = os.environ.get('PAYMONGO_SECRET_KEY', '')
+PAYMONGO_WEBHOOK_SECRET = os.environ.get('PAYMONGO_WEBHOOK_SECRET', '')
+PAYMONGO_PUBLIC_KEY = os.environ.get('PAYMONGO_PUBLIC_KEY', '')
