@@ -90,6 +90,57 @@ def login_view(request):
     return render(request, 'login.html', {'form': form})
 
 
+@require_http_methods(["GET", "POST"])
+def register(request):
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        store_name = request.POST.get('store_name', '').strip()
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+
+        errors = []
+        if not store_name: errors.append('Store name is required.')
+        if not username: errors.append('Username is required.')
+        if len(username) < 3: errors.append('Username must be at least 3 characters.')
+        if len(password) < 6: errors.append('Password must be at least 6 characters.')
+        if password != confirm_password: errors.append('Passwords do not match.')
+        if User.objects.filter(username=username).exists(): errors.append('Username already taken.')
+
+        if errors:
+            for e in errors:
+                messages.error(request, e)
+            return render(request, 'register.html', {
+                'store_name': store_name, 'username': username,
+            })
+
+        client = Client.objects.create(
+            name=store_name,
+            subdomain=username.lower().replace(' ', '-'),
+            subscription_status='trial',
+            trial_end_date=timezone.now().date() + timedelta(days=60),
+            monthly_rate=299,
+        )
+
+        user = User.objects.create_user(username=username, password=password)
+        UserProfile.objects.create(user=user, client=client, role='owner')
+
+        user = authenticate(request, username=username, password=password)
+        if user:
+            login(request, user)
+            messages.success(request, f'Welcome {store_name}! Your 60-day free trial has started.')
+            return redirect('dashboard')
+
+        messages.error(request, 'Registration failed. Please try again.')
+        return redirect('login')
+
+    return render(request, 'register.html', {
+        'store_name': '', 'username': '',
+    })
+
+
 def logout_view(request):
     logout(request)
     return redirect('login')
@@ -1133,6 +1184,82 @@ def my_subscription(request):
         'next_due_date': next_due_date,
         'amount_due': amount_due,
     })
+
+
+@login_required
+def checkout(request, plan_id):
+    client = get_client(request)
+    plan = get_object_or_404(SubscriptionPlan, pk=plan_id, is_active=True)
+
+    from .paymongo import create_checkout_session
+    base_url = request.build_absolute_uri('/')[:-1]
+    success_url = base_url + reverse('checkout_success', args=[plan_id])
+    cancel_url = base_url + reverse('my_subscription')
+
+    checkout_url, session_id = create_checkout_session(client, plan, success_url, cancel_url)
+    if checkout_url:
+        return redirect(checkout_url)
+
+    messages.error(request, 'Unable to process payment right now. Please try again later or contact support.')
+    return redirect('my_subscription')
+
+
+@login_required
+def checkout_success(request, plan_id):
+    plan = get_object_or_404(SubscriptionPlan, pk=plan_id, is_active=True)
+    client = get_client(request)
+    today = timezone.now().date()
+
+    paid_until = max(client.paid_until_date, today) if client.paid_until_date else today
+    paid_until += timedelta(days=plan.duration_days)
+
+    ClientPayment.objects.create(
+        client=client,
+        plan=plan,
+        amount=plan.price,
+        payment_method='gcash',
+        reference=f'Auto-{plan.name}-{timezone.now().strftime("%Y%m%d%H%M%S")}',
+        paid_until=paid_until,
+        notes=f'Online payment via PayMongo - {plan.name}',
+        recorded_by=request.user,
+    )
+
+    client.paid_until_date = paid_until
+    if client.subscription_status not in ('active', 'locked'):
+        client.subscription_status = 'expired'
+    client.save()
+
+    ClientLog.objects.create(
+        client=client,
+        action=f'Auto-payment: ₱{plan.price} via PayMongo',
+        details=f'{plan.name} - covered until {paid_until}',
+        changed_by=request.user,
+    )
+
+    messages.success(request, f'Payment successful! Your subscription is active until {paid_until}.')
+    return redirect('my_subscription')
+
+
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def paymongo_webhook(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        payload = request.body.decode('utf-8')
+        data = json.loads(payload)
+        event = data.get('data', {}).get('attributes', {}).get('type', '')
+
+        if event == 'checkout_session.payment.paid':
+            session_id = data['data']['attributes']['data']['id']
+            print(f'PayMongo webhook: payment success for session {session_id}')
+
+        return JsonResponse({'status': 'ok'})
+    except Exception as e:
+        print(f'PayMongo webhook error: {e}')
+        return JsonResponse({'error': str(e)}, status=400)
 
 
 @login_required

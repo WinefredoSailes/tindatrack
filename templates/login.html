@@ -36,10 +36,15 @@
                     placeholder="Enter password">
             </div>
             <button type="submit"
-                class="w-full bg-primary-light text-white py-3 rounded-lg font-medium hover:bg-primary-dark transition">
+                class="w-full bg-primary-light text-white py-3 rounded-lg font-medium hover:opacity-90 transition">
                 Sign In
             </button>
         </form>
+
+        <p class="text-center mt-6 text-sm text-text-secondary">
+            New here?
+            <a href="{% url 'register' %}" class="text-primary-light hover:underline">Start 60-Day Free Trial</a>
+        </p>
 
         <div class="mt-6 text-center text-xs text-text-secondary italic">
             Philippians 4:13 — "I can do all things through Christ who strengthens me."

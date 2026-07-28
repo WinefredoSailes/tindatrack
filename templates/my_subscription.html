@@ -35,17 +35,37 @@
         </div>
     </div>
 
-    <!-- Payment Instructions -->
+    <!-- Subscribe or Payment Instructions -->
     <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover mb-8">
-        <h2 class="text-lg font-semibold text-text-primary mb-4">How to Pay</h2>
+        <h2 class="text-lg font-semibold text-text-primary mb-4">Subscribe</h2>
+        {% if c.status_display != 'active' or c.days_until_expiry < 30 %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <a href="{% url 'checkout' 1 %}" class="block p-4 bg-bg-main rounded-lg border border-bg-hover hover:border-primary-light transition text-center">
+                <p class="text-lg font-bold text-primary-light">₱299</p>
+                <p class="text-sm text-text-primary">Monthly</p>
+                <p class="text-xs text-text-secondary">Billed every 30 days</p>
+            </a>
+            <a href="{% url 'checkout' 2 %}" class="block p-4 bg-bg-main rounded-lg border border-bg-hover hover:border-primary-light transition text-center">
+                <p class="text-lg font-bold text-primary-light">₱2,999</p>
+                <p class="text-sm text-text-primary">Annual</p>
+                <p class="text-xs text-text-secondary">Billed once a year (save ₱589)</p>
+            </a>
+        </div>
+        <p class="text-xs text-text-secondary text-center">Secure payment via GCash or card. Powered by PayMongo.</p>
+        {% else %}
+        <p class="text-sm text-text-secondary text-center">Your subscription is active until {{ c.paid_until_date }}.</p>
+        {% endif %}
+    </div>
+
+    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover mb-8">
+        <h2 class="text-lg font-semibold text-text-primary mb-4">Or Pay Manually</h2>
         <div class="text-sm text-text-secondary space-y-2">
-            <p>Send your payment to the following GCash account:</p>
+            <p>Send payment via GCash and contact your admin to confirm:</p>
             <div class="bg-bg-main rounded-lg p-4 mt-2">
                 <p class="text-text-primary"><strong>GCash:</strong> 0917-XXX-XXXX</p>
                 <p class="text-text-primary"><strong>Name:</strong> TindaTrack Admin</p>
-                <p class="text-text-primary"><strong>Amount:</strong> P{{ amount_due|floatformat:2 }}</p>
+                <p class="text-text-primary"><strong>Amount:</strong> ₱{{ amount_due|floatformat:2 }}</p>
             </div>
-            <p class="mt-2">After sending payment, contact your admin to confirm and update your subscription.</p>
         </div>
     </div>
 

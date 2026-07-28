@@ -5,6 +5,7 @@ urlpatterns = [
     # Auth
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
+    path('register/', views.register, name='register'),
 
     # Dashboard
     path('', views.dashboard, name='dashboard'),
@@ -53,7 +54,10 @@ urlpatterns = [
 
     # My Subscription (client-facing)
     path('my-subscription/', views.my_subscription, name='my_subscription'),
+    path('checkout/<int:plan_id>/', views.checkout, name='checkout'),
+    path('checkout/<int:plan_id>/success/', views.checkout_success, name='checkout_success'),
 
     # API
     path('api/products/', views.api_products, name='api_products'),
+    path('api/paymongo-webhook/', views.paymongo_webhook, name='paymongo_webhook'),
 ]
