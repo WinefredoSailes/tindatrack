@@ -55,7 +55,8 @@ media/
 
 # Environment variables
 .env*.local
-.env*
+.env
+!.env.example
 
 # OS
 .DS_Store
