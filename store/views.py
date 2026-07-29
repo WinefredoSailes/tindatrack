@@ -902,14 +902,6 @@ def credit_add_payment(request, pk):
                 credit.status = 'partial'
             credit.save()
             
-            # If payment made on credit sale, also record as sale revenue
-            Sale.objects.create(
-                client=client,
-                total_amount=amount,
-                payment_type='credit_payment',
-                created_by=request.user
-            )
-            
             messages.success(request, f'Payment of ₱{amount:.2f} recorded for {credit.customer_name}.')
         except ValueError:
             messages.error(request, 'Invalid amount. Please enter a number.')
@@ -1225,8 +1217,7 @@ def checkout_success(request, plan_id):
     )
 
     client.paid_until_date = paid_until
-    if client.subscription_status not in ('active', 'locked'):
-        client.subscription_status = 'expired'
+    client.subscription_status = 'active'
     client.save()
 
     ClientLog.objects.create(
@@ -1249,16 +1240,86 @@ def paymongo_webhook(request):
 
     try:
         payload = request.body.decode('utf-8')
+        signature = request.META.get('HTTP_PAYMONGO_SIGNATURE', '')
+
+        from .paymongo import verify_webhook_signature
+        if not verify_webhook_signature(payload, signature):
+            return JsonResponse({'error': 'Invalid signature'}, status=401)
+
         data = json.loads(payload)
         event = data.get('data', {}).get('attributes', {}).get('type', '')
 
         if event == 'checkout_session.payment.paid':
+            attrs = data['data']['attributes']['data']['attributes']
             session_id = data['data']['attributes']['data']['id']
-            print(f'PayMongo webhook: payment success for session {session_id}')
+            payment_status = attrs.get('status', '')
+            payment_intent = attrs.get('payments', [{}])[0].get('id', '') if attrs.get('payments') else ''
+
+            if payment_status != 'paid':
+                return JsonResponse({'status': 'ignored', 'payment_status': payment_status})
+
+            # Parse client_id and plan_id from description/line items
+            line_items = attrs.get('line_items', []) or attrs.get('description', '').split()
+            client_id = None
+            plan_id = None
+
+            for item in line_items:
+                desc = item.get('description') if isinstance(item, dict) else str(item)
+                if 'client' in str(desc).lower():
+                    parts = str(desc).split()
+                    for p in parts:
+                        if p.startswith('client#'):
+                            client_id = p.replace('client#', '')
+                        elif p.startswith('plan#'):
+                            plan_id = p.replace('plan#', '')
+
+            if not client_id:
+                for item in line_items:
+                    desc = item.get('description') if isinstance(item, dict) else str(item)
+                    if 'subscription for' in desc.lower():
+                        parts = desc.split()
+                        for i, p in enumerate(parts):
+                            if p == '(plan' and i + 1 < len(parts):
+                                plan_id = parts[i + 1].replace('#', '').replace(')', '')
+                        break
+
+            if client_id and plan_id:
+                from store.models import Client, SubscriptionPlan, ClientPayment, ClientLog
+                from django.utils import timezone
+                from datetime import timedelta
+
+                client = Client.objects.filter(pk=client_id).first()
+                plan = SubscriptionPlan.objects.filter(pk=plan_id, is_active=True).first()
+
+                if client and plan:
+                    today = timezone.now().date()
+                    paid_until = max(client.paid_until_date, today) if client.paid_until_date else today
+                    paid_until += timedelta(days=plan.duration_days)
+
+                    ClientPayment.objects.create(
+                        client=client,
+                        plan=plan,
+                        amount=plan.price,
+                        payment_method='gcash',
+                        reference=f'PayMongo-{session_id[:12]}',
+                        paid_until=paid_until,
+                        notes=f'Online payment via PayMongo (session {session_id})',
+                        recorded_by=None,
+                    )
+
+                    client.paid_until_date = paid_until
+                    client.subscription_status = 'active'
+                    client.save()
+
+                    ClientLog.objects.create(
+                        client=client,
+                        action=f'Auto-payment: &#x20B1;{plan.price} via PayMongo',
+                        details=f'{plan.name} - covered until {paid_until}',
+                        changed_by=None,
+                    )
 
         return JsonResponse({'status': 'ok'})
     except Exception as e:
-        print(f'PayMongo webhook error: {e}')
         return JsonResponse({'error': str(e)}, status=400)
 
 

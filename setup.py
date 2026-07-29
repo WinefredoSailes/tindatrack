@@ -2,6 +2,12 @@ import os
 import django
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tindatrack.settings')
+
+from dotenv import load_dotenv
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+if os.path.exists(env_path):
+    load_dotenv(env_path)
+
 django.setup()
 
 from django.contrib.auth.models import User
@@ -30,11 +36,12 @@ if profile_count:
     print(f'Assigned {profile_count} user profiles to default client')
 
 # Create superuser if not exists
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
 if not User.objects.filter(username='admin').exists():
     user = User.objects.create_superuser(
         username='admin',
         email='admin@example.com',
-        password='admin123'
+        password=ADMIN_PASSWORD
     )
     UserProfile.objects.create(user=user, role='owner', client=default_client)
     print('Created admin user (owner)')

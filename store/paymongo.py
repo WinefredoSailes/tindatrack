@@ -3,6 +3,7 @@ PayMongo integration for subscription payments.
 Replace SECRET_KEY with your live key when ready.
 """
 import json
+import base64
 import hmac
 import hashlib
 from django.conf import settings
@@ -28,7 +29,7 @@ def create_checkout_session(client, plan, success_url, cancel_url):
                 'payment_method_types': ['gcash', 'card', 'paymaya'],
                 'success_url': success_url,
                 'cancel_url': cancel_url,
-                'description': f'{plan.name} subscription for {client.name} (plan #{plan.id})',
+                'description': f'{plan.name} subscription for {client.name} (client#{client.id} plan#{plan.id})',
             }
         }
     }
@@ -39,7 +40,8 @@ def create_checkout_session(client, plan, success_url, cancel_url):
     }
 
     if settings.PAYMONGO_SECRET_KEY:
-        headers['Authorization'] = f'Basic {settings.PAYMONGO_SECRET_KEY}'
+        encoded = base64.b64encode(f'{settings.PAYMONGO_SECRET_KEY}:'.encode()).decode()
+        headers['Authorization'] = f'Basic {encoded}'
 
     try:
         r = requests.post(

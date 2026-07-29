@@ -289,10 +289,10 @@ class Purchase(models.Model):
         return f"{self.product.name} - {self.quantity} units"
 
     def save(self, *args, **kwargs):
+        is_new = self.pk is None
         super().save(*args, **kwargs)
-        # Create stock batch when purchase is created
-        if self.pk:
-            StockBatch.objects.get_or_create(
+        if is_new:
+            StockBatch.objects.create(
                 client=self.client,
                 product=self.product,
                 quantity=self.quantity,

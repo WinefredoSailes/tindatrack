@@ -23,7 +23,7 @@ class SubscriptionMiddleware:
 
     def __call__(self, request):
         if request.user.is_authenticated and request.client:
-            allowed_paths = ['/logout/', '/login/', '/clients/']
+            allowed_paths = ['/logout/', '/login/', '/clients/', '/my-subscription/', '/checkout/', '/api/']
             is_allowed = any(request.path.startswith(p) for p in allowed_paths)
 
             # Block expired subscriptions

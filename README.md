@@ -57,8 +57,23 @@ python manage.py runserver
 
 Then open your browser and go to: http://127.0.0.1:8000
 
+## Environment Variables
+
+Copy `.env.example` to `.env` and configure:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SECRET_KEY` | Django secret key (auto-generated if missing) | Random 64-char hex |
+| `DEBUG` | Debug mode | `False` |
+| `ADMIN_PASSWORD` | Password for `setup.py` admin user | `admin123` |
+| `DATABASE_URL` | PostgreSQL URL (leave blank for SQLite) | (SQLite) |
+| `PAYMONGO_SECRET_KEY` | PayMongo secret key (sk_test_xxx or sk_live_xxx) | (empty) |
+| `PAYMONGO_WEBHOOK_SECRET` | PayMongo webhook signature secret | (empty) |
+| `PAYMONGO_PUBLIC_KEY` | PayMongo public key (pk_test_xxx or pk_live_xxx) | (empty) |
+| `ALLOWED_HOSTS` | Comma-separated allowed hosts | `*` |
+
 ## Default Login
-- **Superuser:** Username: `admin`, Password: `admin123`
+- **Superuser:** Username: `admin`, Password: from `ADMIN_PASSWORD` env var or `admin123`
 - **Owner:** Username: `owner`, Password: `owner123` (if created)
 - **Teller:** Username: `teller`, Password: `teller123` (if created)
 
@@ -100,6 +115,8 @@ Then open your browser and go to: http://127.0.0.1:8000
 - `/my-subscription/` page: view plan, rate, paid until, next due, payment history
 - Warning banners on every page when expiring or expired
 - GCash payment instructions displayed
+- PayMongo checkout: click Subscribe → redirected to PayMongo → auto-activate on payment
+- Self-service registration at `/register/` with 60-day free trial
 
 ### Subscription States
 - **Trial** — Countdown based on `trial_end_date`
