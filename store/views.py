@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -1260,28 +1261,15 @@ def paymongo_webhook(request):
 
             # Parse client_id and plan_id from description/line items
             line_items = attrs.get('line_items', []) or attrs.get('description', '').split()
-            client_id = None
-            plan_id = None
-
-            for item in line_items:
-                desc = item.get('description') if isinstance(item, dict) else str(item)
-                if 'client' in str(desc).lower():
-                    parts = str(desc).split()
-                    for p in parts:
-                        if p.startswith('client#'):
-                            client_id = p.replace('client#', '')
-                        elif p.startswith('plan#'):
-                            plan_id = p.replace('plan#', '')
-
-            if not client_id:
-                for item in line_items:
-                    desc = item.get('description') if isinstance(item, dict) else str(item)
-                    if 'subscription for' in desc.lower():
-                        parts = desc.split()
-                        for i, p in enumerate(parts):
-                            if p == '(plan' and i + 1 < len(parts):
-                                plan_id = parts[i + 1].replace('#', '').replace(')', '')
-                        break
+            desc_text = ' '.join(
+                (item.get('description') if isinstance(item, dict) else str(item))
+                for item in line_items
+            )
+            import re
+            client_match = re.search(r'client#(\d+)', desc_text)
+            plan_match = re.search(r'plan#(\d+)', desc_text)
+            client_id = client_match.group(1) if client_match else None
+            plan_id = plan_match.group(1) if plan_match else None
 
             if client_id and plan_id:
                 from store.models import Client, SubscriptionPlan, ClientPayment, ClientLog

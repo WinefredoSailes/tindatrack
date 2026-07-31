@@ -52,10 +52,14 @@ python setup.py
 
 #### 6. Run the App
 ```
-python manage.py runserver
+python manage.py runserver --insecure
 ```
 
 Then open your browser and go to: http://127.0.0.1:8000
+
+> **Note:** `--insecure` is needed because `DEBUG` defaults to `False`. It lets Django
+> serve static files (manifest.json, sw.js, icons) locally. On Render, Whitenoise
+> handles static files instead.
 
 ## Environment Variables
 

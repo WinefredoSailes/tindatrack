@@ -30,6 +30,6 @@ if not exist db.sqlite3 (
 echo Starting server...
 echo Open your browser and go to: http://127.0.0.1:8000
 echo.
-call venv\Scripts\python.exe manage.py runserver
+call venv\Scripts\python.exe manage.py runserver --insecure
 
 pause
