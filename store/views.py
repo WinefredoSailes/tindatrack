@@ -120,8 +120,7 @@ def register(request):
         client = Client.objects.create(
             name=store_name,
             subdomain=username.lower().replace(' ', '-'),
-            subscription_status='trial',
-            trial_end_date=timezone.now().date() + timedelta(days=60),
+            subscription_status='free',
             monthly_rate=299,
         )
 
@@ -131,7 +130,7 @@ def register(request):
         user = authenticate(request, username=username, password=password)
         if user:
             login(request, user)
-            messages.success(request, f'Welcome {store_name}! Your 60-day free trial has started.')
+            messages.success(request, f'Welcome {store_name}! Your store is on the Free plan forever.')
             return redirect('dashboard')
 
         messages.error(request, 'Registration failed. Please try again.')
@@ -268,6 +267,9 @@ def products(request):
         'stock_filter': stock_filter,
         'status_filter': status_filter,
         'page_obj': page_obj,
+        'product_count': client.active_product_count,
+        'product_limit': client.product_limit,
+        'is_premium': client.is_premium,
     }
     return render(request, 'products.html', context)
 
@@ -279,6 +281,18 @@ def add_product(request):
     if request.method == 'POST':
         form = ProductForm(request.POST, client=client)
         if form.is_valid():
+            if not client.is_premium and not request.user.is_superuser:
+                limit = client.product_limit
+                if client.active_product_count >= limit:
+                    messages.error(
+                        request,
+                        f'Free plan is limited to {limit} active products. '
+                        'Upgrade to Premium for unlimited products.'
+                    )
+                    categories = Category.objects.filter(client=client, is_active=True)
+                    return render(request, 'product_form.html', {
+                        'form': form, 'categories': categories, 'title': 'Add Product'
+                    })
             product = form.save(commit=False)
             product.client = client
             product.save()
@@ -592,11 +606,19 @@ def reports(request):
 
     today = timezone.now().date()
 
+    history_days = client.reports_history_days
+    min_history_date = today - timedelta(days=history_days - 1) if history_days else None
+    history_clamped = False
+
     if report_type == 'daily':
         if date_str:
             selected_date = timezone.datetime.strptime(date_str, '%Y-%m-%d').date()
         else:
             selected_date = today
+
+        if min_history_date and selected_date < min_history_date:
+            selected_date = min_history_date
+            history_clamped = True
 
         sales = Sale.objects.filter(client=client, sale_date__date=selected_date)
         total_sales = sales.aggregate(total=Sum('total_amount'))['total'] or 0
@@ -636,6 +658,10 @@ def reports(request):
                 end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
             else:
                 end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+
+        if min_history_date and start_date < min_history_date:
+            start_date = min_history_date
+            history_clamped = True
 
         sales = Sale.objects.filter(client=client, sale_date__date__range=[start_date, end_date])
         total_sales = sales.aggregate(total=Sum('total_amount'))['total'] or 0
@@ -728,11 +754,16 @@ def reports(request):
         }
 
     elif report_type == 'velocity':
-        fast_moving = SaleItem.objects.filter(client=client).values('product__name').annotate(
+        sale_items = SaleItem.objects.filter(client=client)
+        if min_history_date:
+            sale_items = sale_items.filter(sale__sale_date__date__gte=min_history_date)
+            history_clamped = True
+
+        fast_moving = sale_items.values('product__name').annotate(
             total_qty=Sum('quantity')
         ).order_by('-total_qty')[:20]
 
-        slow_moving = SaleItem.objects.filter(client=client).values('product__name').annotate(
+        slow_moving = sale_items.values('product__name').annotate(
             total_qty=Sum('quantity')
         ).order_by('total_qty')[:10]
 
@@ -741,6 +772,9 @@ def reports(request):
             'fast_moving': fast_moving,
             'slow_moving': slow_moving,
         }
+
+    context['history_days'] = history_days
+    context['history_clamped'] = history_clamped
 
     return render(request, 'reports.html', context)
 
@@ -752,7 +786,12 @@ def reports(request):
 def users(request):
     client = get_client(request)
     users = User.objects.filter(profile__client=client).select_related('profile')
-    return render(request, 'users.html', {'users': users})
+    return render(request, 'users.html', {
+        'users': users,
+        'teller_count': client.teller_count,
+        'teller_limit': client.teller_limit,
+        'is_premium': client.is_premium,
+    })
 
 
 @login_required
@@ -762,6 +801,14 @@ def add_user(request):
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
+            role = form.cleaned_data['role']
+            if role == 'teller' and not client.is_premium and not request.user.is_superuser:
+                if client.teller_count >= client.teller_limit:
+                    messages.error(
+                        request,
+                        'Free plan includes 1 teller. Upgrade to Premium for unlimited tellers.'
+                    )
+                    return render(request, 'user_form.html', {'form': form, 'title': 'Add User'})
             user = form.save()
             profile = user.profile
             profile.client = client
@@ -782,6 +829,15 @@ def edit_user(request, pk):
     if request.method == 'POST':
         form = UserEditForm(request.POST, instance=user)
         if form.is_valid():
+            role = form.cleaned_data['role']
+            if role == 'teller' and not client.is_premium and not request.user.is_superuser:
+                existing_tellers = UserProfile.objects.filter(client=client, role='teller').exclude(user=user).count()
+                if existing_tellers >= client.teller_limit:
+                    messages.error(
+                        request,
+                        'Free plan includes 1 teller. Upgrade to Premium for unlimited tellers.'
+                    )
+                    return render(request, 'user_form.html', {'form': form, 'user': user, 'title': 'Edit User'})
             user = form.save()
             if hasattr(user, 'profile'):
                 user.profile.role = form.cleaned_data['role']
@@ -1176,6 +1232,12 @@ def my_subscription(request):
         'today': today,
         'next_due_date': next_due_date,
         'amount_due': amount_due,
+        'is_premium': client.is_premium,
+        'product_count': client.active_product_count,
+        'product_limit': client.product_limit,
+        'teller_count': client.teller_count,
+        'teller_limit': client.teller_limit,
+        'reports_history_days': client.reports_history_days,
     })
 
 

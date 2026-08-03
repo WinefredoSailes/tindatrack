@@ -13,12 +13,15 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div class="bg-bg-card rounded-xl shadow-lg p-4 border border-bg-hover">
             <p class="text-xs text-text-secondary mb-1">Status</p>
-            {% if c.status_display == 'expired' %}
+            {% if c.subscription_status == 'free' %}
+            <p class="text-xl font-bold text-success">Free</p>
+            <p class="text-xs text-text-secondary mt-1">Free forever</p>
+            {% elif c.status_display == 'expired' %}
             <p class="text-xl font-bold text-danger">Expired</p>
             {% elif c.status_display == 'expiring' %}
             <p class="text-xl font-bold text-warning">{{ c.days_until_expiry }} day{{ c.days_until_expiry|pluralize }} left</p>
             {% else %}
-            <p class="text-xl font-bold text-success">Active</p>
+            <p class="text-xl font-bold text-success">Premium</p>
             {% endif %}
         </div>
         <div class="bg-bg-card rounded-xl shadow-lg p-4 border border-bg-hover">
@@ -35,26 +38,50 @@
         </div>
     </div>
 
-    <!-- Subscribe or Payment Instructions -->
-    <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover mb-8">
-        <h2 class="text-lg font-semibold text-text-primary mb-4">Subscribe</h2>
-        {% if c.status_display != 'active' or c.days_until_expiry < 30 %}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <a href="{% url 'checkout' 1 %}" class="block p-4 bg-bg-main rounded-lg border border-bg-hover hover:border-primary-light transition text-center">
-                <p class="text-lg font-bold text-primary-light">₱299</p>
-                <p class="text-sm text-text-primary">Monthly</p>
-                <p class="text-xs text-text-secondary">Billed every 30 days</p>
-            </a>
-            <a href="{% url 'checkout' 2 %}" class="block p-4 bg-bg-main rounded-lg border border-bg-hover hover:border-primary-light transition text-center">
-                <p class="text-lg font-bold text-primary-light">₱2,999</p>
-                <p class="text-sm text-text-primary">Annual</p>
-                <p class="text-xs text-text-secondary">Billed once a year (save ₱589)</p>
-            </a>
+    <!-- Plan Comparison -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover {% if not is_premium %}ring-2 ring-primary-light{% endif %}">
+            <h3 class="text-lg font-bold text-text-primary mb-1">Free</h3>
+            <p class="text-2xl font-bold text-success mb-4">₱0 <span class="text-sm font-normal text-text-secondary">/ forever</span></p>
+            <ul class="text-sm text-text-secondary space-y-2">
+                <li>✓ Unlimited billing & sales</li>
+                <li>✓ Barcode scanning</li>
+                <li>✓ {{ product_count }}/100 active products</li>
+                <li>✓ {{ teller_count }}/1 teller</li>
+                <li>✓ 7-day report history</li>
+            </ul>
+            {% if not is_premium %}
+            <p class="mt-4 text-xs text-success font-medium">Your current plan</p>
+            {% endif %}
         </div>
-        <p class="text-xs text-text-secondary text-center">Secure payment via GCash or card. Powered by PayMongo.</p>
-        {% else %}
-        <p class="text-sm text-text-secondary text-center">Your subscription is active until {{ c.paid_until_date }}.</p>
-        {% endif %}
+        <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover {% if is_premium %}ring-2 ring-primary-light{% endif %}">
+            <h3 class="text-lg font-bold text-text-primary mb-1">Premium</h3>
+            <p class="text-2xl font-bold text-primary-light mb-1">₱299 <span class="text-sm font-normal text-text-secondary">/ month</span></p>
+            <p class="text-xs text-text-secondary mb-4">or ₱2,999/year (save ₱589)</p>
+            <ul class="text-sm text-text-secondary space-y-2">
+                <li>✓ Everything in Free</li>
+                <li>✓ Unlimited products</li>
+                <li>✓ Unlimited tellers</li>
+                <li>✓ Full report history</li>
+            </ul>
+            {% if is_premium %}
+            <p class="mt-4 text-xs text-success font-medium">You're on Premium — salamat!</p>
+            {% else %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <a href="{% url 'checkout' 1 %}" class="block p-4 bg-bg-main rounded-lg border border-bg-hover hover:border-primary-light transition text-center">
+                    <p class="text-lg font-bold text-primary-light">₱299</p>
+                    <p class="text-sm text-text-primary">Monthly</p>
+                    <p class="text-xs text-text-secondary">Billed every 30 days</p>
+                </a>
+                <a href="{% url 'checkout' 2 %}" class="block p-4 bg-bg-main rounded-lg border border-bg-hover hover:border-primary-light transition text-center">
+                    <p class="text-lg font-bold text-primary-light">₱2,999</p>
+                    <p class="text-sm text-text-primary">Annual</p>
+                    <p class="text-xs text-text-secondary">Billed once a year (save ₱589)</p>
+                </a>
+            </div>
+            {% endif %}
+            <p class="text-xs text-text-secondary text-center mt-3">Secure payment via GCash or card. Powered by PayMongo.</p>
+        </div>
     </div>
 
     <div class="bg-bg-card rounded-xl shadow-lg p-6 border border-bg-hover mb-8">

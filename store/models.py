@@ -4,8 +4,14 @@ from django.db.models import Sum, F
 from django.utils import timezone
 
 
+FREE_PRODUCT_LIMIT = 100
+FREE_TELLER_LIMIT = 1
+FREE_REPORT_HISTORY_DAYS = 7
+
+
 class Client(models.Model):
     SUBSCRIPTION_CHOICES = [
+        ('free', 'Free'),
         ('trial', 'Trial'),
         ('active', 'Active'),
         ('expired', 'Expired'),
@@ -30,6 +36,8 @@ class Client(models.Model):
 
     @property
     def is_subscription_valid(self):
+        if self.subscription_status == 'free':
+            return True
         if self.subscription_status == 'active':
             return True
         if self.subscription_status == 'trial' and self.trial_end_date:
@@ -39,9 +47,39 @@ class Client(models.Model):
         return False
 
     @property
+    def is_premium(self):
+        if self.subscription_status in ('active', 'trial'):
+            return True
+        if self.subscription_status == 'expired' and self.paid_until_date:
+            return self.paid_until_date >= timezone.now().date()
+        return False
+
+    @property
+    def product_limit(self):
+        return None if self.is_premium else FREE_PRODUCT_LIMIT
+
+    @property
+    def teller_limit(self):
+        return None if self.is_premium else FREE_TELLER_LIMIT
+
+    @property
+    def reports_history_days(self):
+        return None if self.is_premium else FREE_REPORT_HISTORY_DAYS
+
+    @property
+    def active_product_count(self):
+        return self.products.filter(is_active=True).count()
+
+    @property
+    def teller_count(self):
+        return self.profiles.filter(role='teller').count()
+
+    @property
     def days_until_expiry(self):
         today = timezone.now().date()
         if self.subscription_status == 'active':
+            return 999
+        if self.subscription_status == 'free':
             return 999
         if self.subscription_status == 'trial' and self.trial_end_date:
             return (self.trial_end_date - today).days

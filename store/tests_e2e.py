@@ -56,9 +56,9 @@ class E2ETests(TestCase):
     def test_register_page_loads(self):
         r = self.test_client.get(reverse('register'))
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, 'Start Free Trial')
+        self.assertContains(r, 'Create Free Account')
 
-    def test_register_creates_client_with_60day_trial(self):
+    def test_register_creates_client_on_free_plan(self):
         r = self.test_client.post(reverse('register'), {
             'store_name': 'Maria Store',
             'username': 'maria',
@@ -70,10 +70,9 @@ class E2ETests(TestCase):
 
         client = Client.objects.get(subdomain='maria')
         self.assertEqual(client.name, 'Maria Store')
-        self.assertEqual(client.subscription_status, 'trial')
+        self.assertEqual(client.subscription_status, 'free')
         self.assertEqual(client.monthly_rate, 299)
-        expected_end = timezone.now().date() + timedelta(days=60)
-        self.assertEqual(client.trial_end_date, expected_end)
+        self.assertIsNone(client.trial_end_date)
 
         user = User.objects.get(username='maria')
         self.assertTrue(user.profile.client == client)
@@ -82,6 +81,17 @@ class E2ETests(TestCase):
         # User is actually logged in and can access dashboard
         r = self.test_client.get(reverse('dashboard'))
         self.assertEqual(r.status_code, 200)
+
+    def test_free_plan_never_expires(self):
+        self.client_obj.subscription_status = 'free'
+        self.client_obj.trial_end_date = None
+        self.client_obj.paid_until_date = None
+        self.client_obj.save()
+
+        self.login('owner', 'owner123')
+        r = self.test_client.get(reverse('dashboard'))
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(self.client_obj.is_subscription_valid)
 
     def test_register_duplicate_username(self):
         r = self.test_client.post(reverse('register'), {
@@ -522,6 +532,134 @@ class E2ETests(TestCase):
         self.assertRedirects(r, reverse('users'))
         self.teller.refresh_from_db()
         self.assertTrue(self.teller.is_active)
+
+    # ============ 8b. FREEMIUM LIMITS ============
+    def _create_free_client(self):
+        client = Client.objects.create(
+            name='Free Store', subdomain='freestore', subscription_status='free')
+        owner = User.objects.create_user('freeowner', password='free123')
+        UserProfile.objects.create(user=owner, client=client, role='owner')
+        return client, owner
+
+    def test_free_plan_blocks_101st_product(self):
+        client, owner = self._create_free_client()
+        category = Category.objects.create(client=client, name='Goods')
+        for i in range(100):
+            Product.objects.create(client=client, name=f'Item {i}', category=category, selling_price=10)
+        self.assertEqual(client.active_product_count, 100)
+
+        self.assertTrue(self.test_client.login(username='freeowner', password='free123'))
+        r = self.test_client.post(reverse('add_product'), {
+            'name': 'Item 101', 'category': category.id, 'selling_price': '10',
+            'cost_price': '5', 'reorder_level': '5',
+        })
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Free plan is limited to 100')
+        self.assertEqual(Product.objects.filter(client=client).count(), 100)
+
+    def test_free_plan_allows_100th_product(self):
+        client, owner = self._create_free_client()
+        category = Category.objects.create(client=client, name='Goods')
+        for i in range(99):
+            Product.objects.create(client=client, name=f'Item {i}', category=category, selling_price=10)
+
+        self.assertTrue(self.test_client.login(username='freeowner', password='free123'))
+        r = self.test_client.post(reverse('add_product'), {
+            'name': 'Item 100', 'category': category.id, 'selling_price': '10',
+            'cost_price': '5', 'reorder_level': '5',
+        })
+        self.assertRedirects(r, reverse('products'))
+        self.assertEqual(Product.objects.filter(client=client).count(), 100)
+
+    def test_archived_products_do_not_count_toward_limit(self):
+        client, owner = self._create_free_client()
+        category = Category.objects.create(client=client, name='Goods')
+        for i in range(100):
+            Product.objects.create(client=client, name=f'Item {i}', category=category, selling_price=10)
+        archived = Product.objects.filter(client=client).last()
+        archived.is_active = False
+        archived.save()
+
+        self.assertTrue(self.test_client.login(username='freeowner', password='free123'))
+        r = self.test_client.post(reverse('add_product'), {
+            'name': 'Item 101', 'category': category.id, 'selling_price': '10',
+            'cost_price': '5', 'reorder_level': '5',
+        })
+        self.assertRedirects(r, reverse('products'))
+        self.assertEqual(Product.objects.filter(client=client).count(), 101)
+
+    def test_superuser_bypasses_product_limit(self):
+        client, owner = self._create_free_client()
+        admin = User.objects.get(username='admin')
+        admin.profile.client = client
+        admin.profile.save()
+        category = Category.objects.create(client=client, name='Goods')
+        for i in range(100):
+            Product.objects.create(client=client, name=f'Item {i}', category=category, selling_price=10)
+
+        self.assertTrue(self.test_client.login(username='admin', password='admin123'))
+        r = self.test_client.post(reverse('add_product'), {
+            'name': 'Item 101', 'category': category.id, 'selling_price': '10',
+            'cost_price': '5', 'reorder_level': '5',
+        })
+        self.assertRedirects(r, reverse('products'))
+        self.assertEqual(Product.objects.filter(client=client).count(), 101)
+
+    def test_free_plan_blocks_second_teller(self):
+        client, owner = self._create_free_client()
+        UserProfile.objects.create(
+            user=User.objects.create_user('freecashier', password='cash123'),
+            client=client, role='teller')
+        self.assertEqual(client.teller_count, 1)
+
+        self.assertTrue(self.test_client.login(username='freeowner', password='free123'))
+        r = self.test_client.post(reverse('add_user'), {
+            'username': 'cashier2', 'password': 'cash123', 'role': 'teller',
+        })
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Free plan includes 1 teller')
+        self.assertFalse(User.objects.filter(username='cashier2').exists())
+
+    def test_free_plan_allows_first_teller(self):
+        client, owner = self._create_free_client()
+        self.assertTrue(self.test_client.login(username='freeowner', password='free123'))
+        r = self.test_client.post(reverse('add_user'), {
+            'username': 'cashier1', 'password': 'cash123', 'role': 'teller',
+        })
+        self.assertRedirects(r, reverse('users'))
+        self.assertTrue(User.objects.filter(username='cashier1').exists())
+
+    def test_free_plan_blocks_role_change_to_second_teller(self):
+        client, owner = self._create_free_client()
+        teller = User.objects.create_user('freteller', password='cash123')
+        UserProfile.objects.create(user=teller, client=client, role='teller')
+        another = User.objects.create_user('fresupervisor', password='cash123')
+        UserProfile.objects.create(user=another, client=client, role='owner')
+
+        self.assertTrue(self.test_client.login(username='freeowner', password='free123'))
+        r = self.test_client.post(reverse('edit_user', args=[another.id]), {
+            'username': 'fresupervisor', 'first_name': '', 'last_name': '', 'email': '',
+            'role': 'teller', 'is_active': 'on',
+        })
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Free plan includes 1 teller')
+        another.refresh_from_db()
+        self.assertTrue(another.profile.is_owner)
+
+    def test_free_reports_clamp_to_7_days(self):
+        client, owner = self._create_free_client()
+        self.assertTrue(self.test_client.login(username='freeowner', password='free123'))
+        old = (timezone.now().date() - timedelta(days=30)).isoformat()
+        r = self.test_client.get(reverse('reports') + '?type=daily&date=' + old)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Free plan keeps')
+        self.assertContains(r, 'Showing the most recent period')
+
+    def test_pos_search_by_sku(self):
+        self.login('owner', 'owner123')
+        r = self.test_client.get(reverse('pos') + '?search=CH001')
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Chips')
 
     # ============ 9. CLIENT MANAGEMENT ============
     def test_client_edit_logs_changes(self):

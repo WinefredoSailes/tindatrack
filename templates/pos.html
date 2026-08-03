@@ -10,9 +10,15 @@
         <div class="mb-4">
             <form method="GET" id="searchForm" class="flex flex-col sm:flex-row gap-2">
                 <div class="flex-1 flex gap-2">
-                    <input type="text" name="search" value="{{ search }}" placeholder="Search products..."
+                    <input type="text" name="search" value="{{ search }}" placeholder="Search products or scan barcode..."
                         class="flex-1 px-4 py-3 bg-bg-card border border-bg-hover rounded-lg text-lg text-text-primary placeholder-text-disabled"
                         id="productSearch">
+                    <button type="button" onclick="openScanner()" title="Scan barcode"
+                        class="bg-bg-hover text-text-primary px-4 py-2 rounded-lg hover:bg-bg-card">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                        </svg>
+                    </button>
                     <button type="submit" class="bg-bg-hover text-text-primary px-4 py-2 rounded-lg hover:bg-bg-card">
                         Search
                     </button>
@@ -151,11 +157,77 @@
     </div>
 </div>
 
+<!-- Barcode Scanner Modal -->
+<div id="scannerModal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-bg-card rounded-xl shadow-xl p-4 max-w-md w-full border border-bg-hover">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-lg font-semibold text-text-primary">Scan Barcode</h3>
+            <button onclick="closeScanner()" class="p-2 hover:bg-bg-hover rounded-lg text-text-secondary">✕</button>
+        </div>
+        <div id="reader" class="w-full"></div>
+        <p class="text-xs text-text-secondary text-center mt-3">Point your camera at the product barcode (EAN / UPC / Code 128).</p>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
+<script src="/static/js/html5-qrcode.min.js"></script>
 <script>
     let cart = [];
+    let scanner = null;
+
+    function openScanner() {
+        const modal = document.getElementById('scannerModal');
+        modal.classList.remove('hidden');
+        const reader = document.getElementById('reader');
+        reader.innerHTML = '';
+        scanner = new Html5Qrcode('reader');
+        scanner.start(
+            { facingMode: 'environment' },
+            {
+                fps: 10,
+                qrbox: { width: 250, height: 120 },
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.CODE_93,
+                    Html5QrcodeSupportedFormats.ITF,
+                    Html5QrcodeSupportedFormats.CODABAR,
+                ],
+            },
+            onScanSuccess
+        ).catch(err => {
+            alert('Camera not available: ' + err + '\n\nTip: use a hardware barcode scanner by typing into the search box.');
+            closeScanner();
+        });
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+        scanner.stop().then(() => {
+            closeScanner();
+            const input = document.getElementById('productSearch');
+            input.value = decodedText.trim();
+            document.getElementById('searchForm').submit();
+        }).catch(() => {});
+    }
+
+    function closeScanner() {
+        const modal = document.getElementById('scannerModal');
+        modal.classList.add('hidden');
+        if (scanner) {
+            scanner.stop().then(() => {
+                scanner.clear();
+                scanner = null;
+            }).catch(() => {});
+        }
+        const reader = document.getElementById('reader');
+        if (reader) reader.innerHTML = '';
+    }
 
     function addToCart(id, name, price, stock) {
         if (stock === 0) return;
